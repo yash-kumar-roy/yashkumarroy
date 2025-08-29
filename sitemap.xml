@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="https://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://spidy21.github.io/yashkumarroy/</loc>
+    <lastmod>2025-08-29</lastmod>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- Examples for sub-projects (add all that you want indexed) -->
+  <url><loc>https://spidy21.github.io/yashkumarroy/Calculator/</loc><lastmod>2025-08-29</lastmod></url>
+  <url><loc>https://spidy21.github.io/yashkumarroy/catch%20falling%20fruits/</loc><lastmod>2025-08-29</lastmod></url>
+  <url><loc>https://spidy21.github.io/yashkumarroy/Equation%20Solver%20Tool/</loc><lastmod>2025-08-29</lastmod></url>
+  <url><loc>https://spidy21.github.io/yashkumarroy/Python%20quiz/</loc><lastmod>2025-08-29</lastmod></url>
+  <url><loc>https://spidy21.github.io/yashkumarroy/Photo%20compressor/</loc><lastmod>2025-08-29</lastmod></url>
+  <url><loc>https://spidy21.github.io/yashkumarroy/Micro%20Habit%20Tracker/</loc><lastmod>2025-08-29</lastmod></url>
+  <url><loc>https://spidy21.github.io/yashkumarroy/Family%20Tree/</loc><lastmod>2025-08-29</lastmod></url>
+  <url><loc>https://spidy21.github.io/yashkumarroy/Grok%20Home%20Page/</loc><lastmod>2025-08-29</lastmod></url>
+  <url><loc>https://spidy21.github.io/yashkumarroy/MarkdownSlides/</loc><lastmod>2025-08-29</lastmod></url>
+  <url><loc>https://spidy21.github.io/yashkumarroy/Time%20Sheet/</loc><lastmod>2025-08-29</lastmod></url>
+  <url><loc>https://spidy21.github.io/yashkumarroy/Todo%20list/</loc><lastmod>2025-08-29</lastmod></url>
+</urlset>
