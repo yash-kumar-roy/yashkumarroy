@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://spidy21.github.io/yashkumarroy/sitemap.xml
