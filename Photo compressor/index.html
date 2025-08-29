@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Photo Compressor — Single File App</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--muted:#9aa6b2;--accent:#06b6d4}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial;background:linear-gradient(180deg,#071022 0%,#071730 100%);color:#e6eef6;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+    .app{width:100%;max-width:980px;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.04);border-radius:12px;box-shadow:0 8px 30px rgba(2,6,23,0.6);padding:20px;}
+    header{display:flex;align-items:center;gap:12px}
+    header h1{font-size:20px;margin:0}
+    .controls{display:grid;grid-template-columns:1fr 260px;gap:16px;margin-top:16px}
+    .panel{background:rgba(255,255,255,0.02);padding:14px;border-radius:10px;border:1px solid rgba(255,255,255,0.02)}
+    .drop{min-height:150px;border:2px dashed rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;padding:12px;border-radius:8px}
+    .btn{background:var(--accent);color:#042022;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600}
+    input[type=range]{width:100%}
+    label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+    .small{font-size:13px;color:var(--muted)}
+    .options{display:flex;flex-direction:column;gap:10px}
+    .row{display:flex;gap:10px;align-items:center}
+    .thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-top:14px}
+    .thumb{background:#02101a;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.02);display:flex;flex-direction:column;gap:8px}
+    .thumb img{width:100%;height:120px;object-fit:cover;border-radius:6px}
+    .meta{font-size:12px;color:var(--muted);display:flex;justify-content:space-between}
+    .actions{display:flex;gap:8px}
+    .linkish{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted);padding:6px 8px;border-radius:6px;cursor:pointer}
+    footer{margin-top:12px;display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted)}
+    @media (max-width:720px){.controls{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="app" role="application" aria-label="Photo Compressor single-file app">
+    <header>
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" aria-hidden>
+        <rect width="24" height="24" rx="6" fill="#05202A"></rect>
+        <path d="M6 14.5L10 9l4 5.5 3-4" stroke="#06b6d4" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div>
+        <h1>Photo Compressor</h1>
+        <div class="small">Compress images in the browser — no uploads, private and fast.</div>
+      </div>
+    </header>
+
+    <div class="controls">
+      <div class="panel">
+        <div class="drop" id="dropzone" tabindex="0">
+          <div style="font-weight:700">Drop images here or click to select</div>
+          <div class="small">Supports JPG, PNG, WebP. Multiple files supported.</div>
+          <input id="fileInput" type="file" accept="image/*" multiple style="display:none">
+        </div>
+
+        <div style="margin-top:12px;display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap">
+          <div style="flex:1">
+            <label class="small">Quality: <span id="qualityVal">0.8</span></label>
+            <input id="quality" type="range" min="0.1" max="1" step="0.05" value="0.8">
+          </div>
+          <div style="width:120px">
+            <label class="small">Max width (px)</label>
+            <input id="maxWidth" type="number" min="16" placeholder="auto" style="width:100%;padding:6px;border-radius:6px;border:none;background:#06131a;color:#dff6fb">
+          </div>
+        </div>
+
+        <div style="margin-top:12px;display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap">
+          <div style="flex:1">
+            <label class="small">Output format</label>
+            <select id="format" style="width:100%;padding:8px;border-radius:6px;background:#07121a;border:none;color:#e6eef6">
+              <option value="auto">Keep original</option>
+              <option value="image/jpeg">JPEG</option>
+              <option value="image/webp">WebP</option>
+              <option value="image/png">PNG (lossless)</option>
+            </select>
+          </div>
+          <div style="width:120px">
+            <label class="small">Resize mode</label>
+            <select id="resizeMode" style="width:100%;padding:8px;border-radius:6px;background:#07121a;border:none;color:#e6eef6">
+              <option value="fit">Fit (maintain aspect)</option>
+              <option value="cover">Cover (crop)</option>
+              <option value="noscale">No scale</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:12px;align-items:center">
+          <button id="compressBtn" class="btn">Compress Selected</button>
+          <button id="downloadAllBtn" class="linkish" title="Download all compressed files" disabled>Download All</button>
+          <button id="clearBtn" class="linkish">Clear</button>
+        </div>
+
+        <div class="small" style="margin-top:10px">Tip: Use WebP for smallest size. PNG is lossless and may not shrink much.</div>
+      </div>
+
+      <div class="panel" aria-live="polite">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-weight:700">Queue / Previews</div>
+          <div class="small" id="stats">0 files</div>
+        </div>
+
+        <div class="thumbs" id="thumbs"></div>
+      </div>
+    </div>
+
+    <footer>
+      <div class="small">Built with &lt;canvas&gt; — all work stays in your browser.</div>
+      <div class="small">© PhotoCompressor</div>
+    </footer>
+  </div>
+
+  <!-- JSZip for "download all" zip creation. Using CDN so this remains a single HTML file. -->
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.0/dist/jszip.min.js"></script>
+  <script>
+    // Helper utilities
+    const byId = id => document.getElementById(id);
+    const fileInput = byId('fileInput');
+    const dropzone = byId('dropzone');
+    const thumbs = byId('thumbs');
+    const stats = byId('stats');
+    const compressBtn = byId('compressBtn');
+    const downloadAllBtn = byId('downloadAllBtn');
+    const clearBtn = byId('clearBtn');
+    const qualityRange = byId('quality');
+    const qualityVal = byId('qualityVal');
+
+    let files = []; // {file, img, dataUrl, compressedBlob, compressedSize}
+
+    // UI bindings
+    dropzone.addEventListener('click', ()=> fileInput.click());
+    dropzone.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') fileInput.click() });
+    fileInput.addEventListener('change', (e)=> handleFiles(e.target.files));
+
+    // Drag drop
+    ['dragenter','dragover'].forEach(ev=>{
+      dropzone.addEventListener(ev, (e)=>{ e.preventDefault(); dropzone.style.borderColor = '#06b6d4' });
+    });
+    ['dragleave','drop'].forEach(ev=>{
+      dropzone.addEventListener(ev, (e)=>{ e.preventDefault(); dropzone.style.borderColor = '' });
+    });
+    dropzone.addEventListener('drop', (e)=>{ handleFiles(e.dataTransfer.files) });
+
+    qualityRange.addEventListener('input', ()=> qualityVal.textContent = qualityRange.value);
+
+    clearBtn.addEventListener('click', ()=>{ files=[]; render(); });
+
+    compressBtn.addEventListener('click', async ()=>{
+      if(files.length===0){ alert('No files selected.'); return; }
+      compressBtn.disabled = true; compressBtn.textContent = 'Compressing...';
+      for(let i=0;i<files.length;i++){
+        try{ await compressItem(files[i], i); renderItem(files[i], i); }
+        catch(err){ console.error(err); files[i].error = err.message || String(err); }
+      }
+      compressBtn.disabled = false; compressBtn.textContent = 'Compress Selected';
+      updateDownloadAllState();
+      render();
+    });
+
+    downloadAllBtn.addEventListener('click', async ()=>{
+      if(files.length===0) return;
+      downloadAllBtn.disabled = true; downloadAllBtn.textContent = 'Preparing zip...';
+      const zip = new JSZip();
+      files.forEach((it, idx)=>{
+        const blob = it.compressedBlob || it.file;
+        const ext = blob.type.split('/')[1] || 'img';
+        const baseName = (it.file.name || ('image'+idx));
+        const name = baseName.replace(/\.[^/.]+$/, '') + '_compressed.' + (ext==='jpeg'? 'jpg': ext);
+        zip.file(name, blob);
+      });
+      const content = await zip.generateAsync({type:'blob'});
+      const url = URL.createObjectURL(content);
+      const a = document.createElement('a'); a.href = url; a.download = 'photos_compressed.zip'; document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      downloadAllBtn.disabled = false; downloadAllBtn.textContent = 'Download All';
+    });
+
+    function handleFiles(fileList){
+      const arr = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+      if(arr.length===0){ alert('Please select image files only.'); return; }
+      arr.forEach(file => {
+        const existing = files.find(f => f.file.name === file.name && f.file.size === file.size);
+        if(existing) return; // skip duplicates
+        const reader = new FileReader();
+        const entry = { file, name: file.name, originalSize: file.size };
+        files.push(entry);
+        reader.onload = e => { entry.dataUrl = e.target.result; createImage(entry); render(); };
+        reader.readAsDataURL(file);
+      });
+      render();
+    }
+
+    function createImage(entry){
+      const img = new Image(); img.onload = ()=>{ entry.img = img; renderItem(entry, files.indexOf(entry)); };
+      img.onerror = ()=>{ entry.error = 'Failed to load image'; render(); };
+      img.src = entry.dataUrl;
+    }
+
+    function render(){
+      thumbs.innerHTML = '';
+      files.forEach((it, idx)=> renderItem(it, idx));
+      stats.textContent = files.length + ' file' + (files.length===1?'':'s');
+    }
+
+    function renderItem(it, idx){
+      const el = document.createElement('div'); el.className = 'thumb';
+      const img = document.createElement('img');
+      if(it.dataUrl) img.src = it.dataUrl; else img.alt = 'loading...';
+      el.appendChild(img);
+
+      const meta = document.createElement('div'); meta.className = 'meta';
+      const left = document.createElement('div'); left.innerHTML = `<div style="font-weight:600">${escapeHtml(it.name || 'image')}</div><div class="small">${formatBytes(it.originalSize || 0)}</div>`;
+      const right = document.createElement('div'); right.style.textAlign='right';
+      if(it.compressedSize){ right.innerHTML = `<div class="small">${formatBytes(it.compressedSize)}</div><div class="small">saved ${percent(it.originalSize,it.compressedSize)}</div>`; }
+      else if(it.error) right.innerHTML = `<div style="color:#ff6b6b">Error</div>`;
+      else right.innerHTML = '<div class="small">Not compressed</div>';
+      meta.appendChild(left); meta.appendChild(right);
+      el.appendChild(meta);
+
+      const actions = document.createElement('div'); actions.className = 'actions';
+      const removeBtn = document.createElement('button'); removeBtn.className='linkish'; removeBtn.textContent='Remove'; removeBtn.onclick = ()=>{ files.splice(idx,1); render(); updateDownloadAllState(); };
+      actions.appendChild(removeBtn);
+
+      const downloadBtn = document.createElement('button'); downloadBtn.className='btn'; downloadBtn.textContent='Download';
+      downloadBtn.onclick = ()=>{
+        const blob = it.compressedBlob || it.file;
+        const ext = (blob.type.split('/')[1] || 'img');
+        const name = (it.name||'image').replace(/\.[^/.]+$/, '') + '_compressed.' + (ext==='jpeg'?'jpg':ext);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+      };
+      actions.appendChild(downloadBtn);
+
+      if(it.compressedBlob){
+        const previewBtn = document.createElement('button'); previewBtn.className='linkish'; previewBtn.textContent='Preview'; previewBtn.onclick = ()=>{
+          const url = URL.createObjectURL(it.compressedBlob); const w = window.open('', '_blank'); if(w){ w.document.write(`<img src="${url}" style="max-width:100%">`); }
+        };
+        actions.appendChild(previewBtn);
+      }
+
+      if(it.error){
+        const e = document.createElement('div'); e.style.color='#ff8b8b'; e.style.marginTop='6px'; e.textContent = it.error; el.appendChild(e);
+      }
+
+      el.appendChild(actions);
+      // replace or append
+      const existing = thumbs.children[idx];
+      if(existing) thumbs.replaceChild(el, existing); else thumbs.appendChild(el);
+    }
+
+    function formatBytes(bytes){ if(!bytes) return '0 B'; const units=['B','KB','MB','GB']; let i=0; while(bytes>=1024 && i<units.length-1){ bytes/=1024; i++; } return bytes.toFixed(2)+' '+units[i]; }
+    function percent(orig, comp){ if(!orig) return ''; const p = Math.round((1 - (comp/orig))*100); return p+'%'; }
+
+    async function compressItem(item, idx){
+      // If no image or failed to load, skip
+      if(!item.img) throw new Error('Image not ready');
+      const formatSelect = byId('format').value;
+      let mimeType = formatSelect === 'auto' ? (item.file.type || 'image/jpeg') : formatSelect;
+      // PNG chosen => browsers ignore quality param; we'll still draw to canvas
+      const quality = parseFloat(byId('quality').value);
+      const maxWidth = parseInt(byId('maxWidth').value) || null;
+      const resizeMode = byId('resizeMode').value;
+
+      // Compute target dimensions
+      let sw = item.img.width, sh = item.img.height;
+      let dw = sw, dh = sh;
+      if(maxWidth && resizeMode !== 'noscale'){
+        if(sw > maxWidth){ const ratio = maxWidth / sw; dw = Math.round(sw * ratio); dh = Math.round(sh * ratio); }
+      }
+
+      // For cover mode, we will center-crop to exact width if maxWidth provided
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      if(resizeMode === 'cover' && maxWidth){
+        // Cover: make square-ish canvas of size maxWidth x (proportional)
+        const targetW = dw; const targetH = dh; canvas.width = targetW; canvas.height = targetH;
+        // draw image centered and cropped
+        const scale = Math.max(canvas.width / sw, canvas.height / sh);
+        const nx = (canvas.width - sw*scale)/2; const ny = (canvas.height - sh*scale)/2;
+        ctx.drawImage(item.img, nx, ny, sw*scale, sh*scale);
+      } else {
+        canvas.width = dw; canvas.height = dh;
+        ctx.drawImage(item.img, 0, 0, dw, dh);
+      }
+
+      // Convert canvas to blob
+      const blob = await new Promise((resolve) => {
+        // PNG ignores quality parameter; WebP and JPEG respect it
+        if(mimeType === 'image/png') canvas.toBlob(resolve, 'image/png');
+        else canvas.toBlob(resolve, mimeType, mimeType==='image/png'?undefined:quality);
+      });
+
+      if(!blob) throw new Error('Compression produced no output');
+      item.compressedBlob = blob; item.compressedSize = blob.size;
+    }
+
+    function escapeHtml(str){ return String(str).replace(/[&<>"']/g, (s)=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[s])); }
+
+    function updateDownloadAllState(){ const ready = files.some(f=>f.compressedBlob); downloadAllBtn.disabled = !ready; }
+
+    // keyboard accessibility for dropzone (space/enter handled above). Also allow paste?
+    window.addEventListener('paste', (e)=>{
+      const items = e.clipboardData && e.clipboardData.items;
+      if(!items) return;
+      const imgs = [];
+      for(const it of items){ if(it.type && it.type.startsWith('image/')) imgs.push(it.getAsFile()); }
+      if(imgs.length) handleFiles(imgs);
+    });
+
+    // initial render
+    render();
+
+  </script>
+</body>
+</html>

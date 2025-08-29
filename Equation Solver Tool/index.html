@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Equation Solver Tool</title>
+  <style>
+    :root{--bg:#fbfbfb;--card:#ffffff;--muted:#6b7280;--accent:#1f2937}
+    html,body{height:100%;margin:0;font-family:"Source Serif Pro", Georgia, "Times New Roman", serif;background:var(--bg);color:var(--accent)}
+    .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px}
+    .card{width:820px;max-width:95%;background:var(--card);border:1px solid #e6e9ee;padding:28px;border-radius:10px;box-shadow:0 8px 30px rgba(15,23,42,0.06)}
+    h1{margin:0 0 6px 0;font-size:20px}
+    p.lead{margin:0 0 18px 0;color:var(--muted);font-size:13px}
+
+    .row{display:flex;gap:12px;align-items:center}
+    input[type=text]{flex:1;padding:10px 12px;border:1px solid #e6e9ee;border-radius:6px;font-size:15px}
+    select{padding:8px;border-radius:6px;border:1px solid #e6e9ee}
+    .btn{padding:8px 12px;border-radius:7px;border:1px solid #cbd5e1;background:#f8fafc;cursor:pointer}
+    .btn.primary{background:#111827;color:#fff;border-color:#111827}
+
+    .output{margin-top:18px;border-top:1px solid #eef2f7;padding-top:18px}
+    .steps{margin:8px 0 0 0;padding-left:18px}
+    .meta{font-size:13px;color:var(--muted);margin-top:6px}
+
+    footer{margin-top:16px;display:flex;justify-content:space-between;align-items:center}
+    .small{font-size:13px;color:var(--muted)}
+
+    pre{background:#fbfdff;border:1px solid #eef6ff;padding:12px;border-radius:6px;overflow:auto}
+
+    @media (max-width:600px){.row{flex-direction:column;align-items:stretch}.btn{width:100%}.card{padding:16px}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card" role="application" aria-labelledby="title">
+      <h1 id="title">Equation Solver Tool</h1>
+      <p class="lead">Enter a single-variable algebraic equation (e.g. <code>2x + 3 = 7</code> or <code>x^2 - 5x + 6 = 0</code>). The tool will produce a step-by-step breakdown and the result. Export results as text when done.</p>
+
+      <div class="row">
+        <input id="equation" type="text" placeholder="Enter equation, e.g. 3x^2 - 6x + 2 = 0" aria-label="equation input">
+        <select id="variable" aria-label="variable">
+          <option value="x">x</option>
+          <option value="y">y</option>
+          <option value="t">t</option>
+        </select>
+        <button id="solve" class="btn primary">Solve</button>
+        <button id="exportTxt" class="btn" title="Export steps and result as .txt">Export TXT</button>
+        <button id="copy" class="btn">Copy</button>
+      </div>
+
+      <div class="output" id="output" hidden>
+        <div class="meta" id="meta"></div>
+        <ol class="steps" id="steps"></ol>
+        <pre id="resultArea"></pre>
+      </div>
+
+      <footer>
+        <div class="small">Minimal academic UI • Local-only • No external libraries</div>
+        <div class="small">Supports linear and quadratic polynomials (single variable).</div>
+      </footer>
+    </div>
+  </div>
+
+  <script>
+    // --- Utility: parse polynomial expressions in single variable into coefficient map ---
+    function sanitize(expr){ return expr.replace(/\s+/g,'').replace(/\u2212/g,'-'); }
+
+    function splitTerms(expr){
+      // convert unary leading + to nothing, then replace - with +- to split
+      expr = expr.replace(/^[+]/,'');
+      // insert explicit + for splitting but avoid scientific notation (not supported here)
+      expr = expr.replace(/-/g,'+-');
+      const parts = expr.split('+').filter(s=>s!=='');
+      return parts;
+    }
+
+    function parseSide(expr, variable){
+      expr = sanitize(expr);
+      const terms = splitTerms(expr);
+      const coeffs = {}; // degree -> numeric coefficient
+      for(const t of terms){
+        // match coefficient and power
+        // forms: 3x^2, -x^2, 4x, -x, 5
+        const varRegex = new RegExp('^([+-]?\d*\.?\d*)(?:\\*?)' + variable + '(?:\\^(\d+))?$','i');
+        const m = t.match(varRegex);
+        if(m){
+          let a = m[1];
+          let pow = m[2] ? parseInt(m[2],10) : 1;
+          if(a==='' || a==='+' ) a = '1';
+          if(a==='-') a = '-1';
+          const val = parseFloat(a);
+          coeffs[pow] = (coeffs[pow]||0) + val;
+        } else {
+          // constant term
+          const val = parseFloat(t);
+          if(!isNaN(val)) coeffs[0] = (coeffs[0]||0) + val;
+          else {
+            // try to detect forms like x (without explicit coefficient)
+            const justVar = new RegExp('^([+-]?)'+variable+'(?:\\^(\d+))?$','i');
+            const m2 = t.match(justVar);
+            if(m2){
+              const sign = m2[1] === '-' ? -1 : 1;
+              const pow = m2[2] ? parseInt(m2[2],10) : 1;
+              coeffs[pow] = (coeffs[pow]||0) + sign;
+            } else {
+              // unsupported token -> ignore
+            }
+          }
+        }
+      }
+      return coeffs;
+    }
+
+    function combineSides(leftCoeffs, rightCoeffs){
+      const res = {};
+      // move right to left: left - right = 0
+      const degrees = new Set(Object.keys(leftCoeffs).concat(Object.keys(rightCoeffs)));
+      degrees.forEach(k=>{
+        const a = leftCoeffs[k]||0;
+        const b = rightCoeffs[k]||0;
+        const val = a - b;
+        if(Math.abs(val) > 1e-12) res[k] = val;
+      });
+      return res;
+    }
+
+    function degreeOf(coeffs){
+      const keys = Object.keys(coeffs).map(k=>parseInt(k,10));
+      return keys.length ? Math.max(...keys) : -Infinity;
+    }
+
+    function formatPolynomial(coeffs, variable){
+      const degs = Object.keys(coeffs).map(k=>parseInt(k,10)).sort((a,b)=>b-a);
+      if(degs.length===0) return '0';
+      const parts = [];
+      for(const d of degs){
+        const c = coeffs[d];
+        const sign = c<0 ? '-' : (parts.length? '+' : '');
+        const absC = Math.abs(c);
+        if(d===0) parts.push(`${sign}${absC}`);
+        else if(d===1){
+          const coeffStr = Math.abs(absC - 1) < 1e-12 ? '' : absC;
+          parts.push(`${sign}${coeffStr}${variable}`);
+        } else {
+          const coeffStr = Math.abs(absC - 1) < 1e-12 ? '' : absC;
+          parts.push(`${sign}${coeffStr}${variable}^${d}`);
+        }
+      }
+      return parts.join('');
+    }
+
+    // --- Solvers ---
+    function solveLinear(coeffs, variable){
+      // ax + b = 0  => x = -b/a
+      const a = coeffs[1] || 0;
+      const b = coeffs[0] || 0;
+      const steps = [];
+      steps.push(`Equation is linear (degree 1).`);
+      steps.push(`Write as ${a}*${variable} + ${b} = 0.`);
+      if(Math.abs(a) < 1e-12){
+        if(Math.abs(b) < 1e-12) return {steps: steps.concat([ 'All real numbers satisfy the equation (identity).' ]), result: 'Infinite solutions'};
+        else return {steps: steps.concat([ 'No solution (contradiction, 0 = nonzero).' ]), result: 'No solution'};
+      }
+      const x = -b / a;
+      steps.push(`Isolate ${variable}: ${variable} = -(${b}) / (${a}) = ${x}.`);
+      return {steps, result: `${variable} = ${x}`};
+    }
+
+    function solveQuadratic(coeffs, variable){
+      const a = coeffs[2] || 0; const b = coeffs[1] || 0; const c = coeffs[0] || 0;
+      const steps = [];
+      steps.push('Equation is quadratic (degree 2).');
+      steps.push(`Standard form: ${a}*${variable}^2 + ${b}*${variable} + ${c} = 0.`);
+      if(Math.abs(a) < 1e-12){
+        steps.push('Leading coefficient a is zero; fall back to linear solver.');
+        return Object.assign({steps}, solveLinear({1:b,0:c}, variable));
+      }
+      steps.push('Compute discriminant: Δ = b^2 - 4ac.');
+      const disc = b*b - 4*a*c;
+      steps.push(`Δ = (${b})^2 - 4*(${a})*(${c}) = ${disc}.`);
+      if(disc > 1e-12){
+        const sqrt = Math.sqrt(disc);
+        const x1 = (-b + sqrt) / (2*a);
+        const x2 = (-b - sqrt) / (2*a);
+        steps.push(`Δ > 0 → two distinct real roots.`);
+        steps.push(`x = (-b ± √Δ) / (2a) = (-${b} ± ${sqrt}) / (${2*a}).`);
+        steps.push(`x₁ = ${x1}, x₂ = ${x2}.`);
+        return {steps, result: `x₁ = ${x1}, x₂ = ${x2}`};
+      } else if(Math.abs(disc) <= 1e-12){
+        const x = -b / (2*a);
+        steps.push('Δ = 0 → one real double root.');
+        steps.push(`x = -b / (2a) = ${x}.`);
+        return {steps, result: `x = ${x}`};
+      } else {
+        const sqrt = Math.sqrt(-disc);
+        const real = -b / (2*a);
+        const imag = sqrt / (2*a);
+        steps.push('Δ < 0 → two complex roots.');
+        steps.push(`x = ${real} ± ${imag}i`);
+        return {steps, result: `x = ${real} ± ${imag}i`};
+      }
+    }
+
+    // --- Main orchestration ---
+    const eqInput = document.getElementById('equation');
+    const varSelect = document.getElementById('variable');
+    const solveBtn = document.getElementById('solve');
+    const stepsEl = document.getElementById('steps');
+    const output = document.getElementById('output');
+    const meta = document.getElementById('meta');
+    const resultArea = document.getElementById('resultArea');
+    const exportTxt = document.getElementById('exportTxt');
+    const copyBtn = document.getElementById('copy');
+
+    function showSteps(lines, resultText){
+      stepsEl.innerHTML = '';
+      for(const s of lines){
+        const li = document.createElement('li'); li.textContent = s; stepsEl.appendChild(li);
+      }
+      resultArea.textContent = resultText;
+      output.hidden = false;
+    }
+
+    function solve(){
+      const raw = eqInput.value.trim();
+      const variable = varSelect.value.trim();
+      if(!raw){ alert('Please enter an equation.'); return; }
+      // split by =
+      const parts = raw.split('=');
+      if(parts.length !== 2){ alert('Please enter exactly one "=" sign.'); return; }
+      const left = parts[0]; const right = parts[1];
+      // parse sides
+      const leftCoeffs = parseSide(left, variable);
+      const rightCoeffs = parseSide(right, variable);
+      const combined = combineSides(leftCoeffs, rightCoeffs);
+      const deg = degreeOf(combined);
+
+      const lines = [];
+      lines.push(`Provided equation: ${raw}`);
+      lines.push(`Parsed left side coefficients: ${JSON.stringify(leftCoeffs)}`);
+      lines.push(`Parsed right side coefficients: ${JSON.stringify(rightCoeffs)}`);
+      lines.push(`Move all terms to left: ${formatPolynomial(combined, variable)} = 0`);
+
+      if(deg === -Infinity){
+        // no terms => 0 = 0
+        lines.push('After simplification, equation reduces to 0 = 0. All real numbers are solutions.');
+        showSteps(lines, 'Infinite solutions');
+        return;
+      }
+      if(deg === 0){
+        // constant = 0
+        const c = combined[0] || 0;
+        if(Math.abs(c) < 1e-12){ lines.push('0 = 0. Infinite solutions.'); showSteps(lines, 'Infinite solutions'); }
+        else { lines.push(`${c} = 0 is false. No solution.`); showSteps(lines, 'No solution'); }
+        return;
+      }
+      if(deg === 1){
+        const sol = solveLinear(combined, variable);
+        showSteps(lines.concat(sol.steps), sol.result);
+        return;
+      }
+      if(deg === 2){
+        const sol = solveQuadratic(combined, variable);
+        showSteps(lines.concat(sol.steps), sol.result);
+        return;
+      }
+      // degree >2 not supported
+      lines.push(`Polynomial degree ${deg} is not currently supported by this tool.`);
+      showSteps(lines, 'Unsupported — degree > 2');
+    }
+
+    solveBtn.addEventListener('click', solve);
+    eqInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') solve(); });
+
+    exportTxt.addEventListener('click', ()=>{
+      if(output.hidden){ alert('Solve an equation first.'); return; }
+      const text = ['Equation Solver Tool Results', '---', 'Input: ' + eqInput.value, '', 'Steps:'];
+      for(const li of stepsEl.querySelectorAll('li')) text.push('- ' + li.textContent);
+      text.push('', 'Result: ' + resultArea.textContent);
+      const blob = new Blob([text.join('\n')], {type:'text/plain'});
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'equation_result.txt'; a.click();
+    });
+
+    copyBtn.addEventListener('click', ()=>{
+      if(output.hidden){ alert('Solve an equation first.'); return; }
+      const out = resultArea.textContent + '\n\nSteps:\n' + Array.from(stepsEl.querySelectorAll('li')).map(li=>li.textContent).join('\n');
+      navigator.clipboard.writeText(out).then(()=>alert('Copied to clipboard.'), ()=>alert('Copy failed.'));
+    });
+
+    // small example
+    eqInput.value = 'x^2 - 5x + 6 = 0';
+  </script>
+</body>
+</html>

@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Online Whiteboard</title>
+  <style>
+    :root{
+      --bg:#0f1724; --panel:#0b1220; --muted:#94a3b8; --accent:#7c3aed;
+    }
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial}
+    body{background:linear-gradient(180deg,var(--bg),#071024);color:#e6eef8;display:flex;align-items:stretch}
+    /* full-screen app */
+    #app{flex:1;display:grid;grid-template-columns:1fr;grid-template-rows:auto 1fr;gap:0;height:100vh}
+
+    header{height:64px;display:flex;align-items:center;gap:12px;padding:10px 16px;background:rgba(255,255,255,0.02);backdrop-filter:blur(6px)}
+    header h1{margin:0;font-size:16px;font-weight:600}
+    .toolbar{display:flex;align-items:center;gap:8px;margin-left:16px}
+    .btn{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted);padding:8px;border-radius:8px;cursor:pointer;font-size:13px}
+    .btn.active{border-color:var(--accent);color:#fff;box-shadow:0 4px 18px rgba(124,58,237,0.18)}
+    .color-swatch{width:28px;height:28px;border-radius:6px;border:1px solid rgba(255,255,255,0.06);cursor:pointer}
+    .right{margin-left:auto;display:flex;gap:8px}
+
+    main{position:relative;display:flex;flex-direction:row;flex:1;overflow:hidden}
+    /* left: canvas full area */
+    #board-wrap{flex:1;position:relative;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));}
+    canvas{width:100%;height:100%;display:block;touch-action:none}
+
+    /* small floating panel */
+    .panel{position:absolute;left:12px;top:12px;background:var(--panel);padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,0.03);box-shadow:0 6px 30px rgba(2,6,23,0.6)}
+    .panel .row{display:flex;gap:8px;align-items:center}
+    .label{font-size:12px;color:var(--muted)}
+
+    /* bottom mini toolbar */
+    footer{height:56px;display:flex;align-items:center;padding:8px 12px;background:rgba(0,0,0,0.12);gap:8px}
+
+    /* modal */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(2,6,23,0.6);display:none;align-items:center;justify-content:center}
+    .modal{background:linear-gradient(180deg,#041226,#071a2e);padding:16px;border-radius:12px;border:1px solid rgba(255,255,255,0.04);width:640px;max-width:92%}
+    .modal h3{margin:0 0 8px 0}
+    textarea{width:100%;height:120px;font-family:monospace;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.04);background:#071428;color:#cfe8ff}
+    input[type=range]{width:120px}
+
+    @media (max-width:700px){header h1{font-size:14px}.panel{left:6px;top:6px}}
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>Online Whiteboard</h1>
+      <div class="toolbar" role="toolbar" aria-label="tools">
+        <button id="penBtn" class="btn active" title="Pen">✏️ Pen</button>
+        <button id="eraserBtn" class="btn" title="Eraser">🧽 Eraser</button>
+        <div class="panel" style="position:static;padding:6px;display:flex;align-items:center;gap:8px;border-radius:8px">
+          <span class="label">Color</span>
+          <input id="colorPicker" type="color" value="#ffffff" title="Stroke color">
+          <span class="label">Size</span>
+          <input id="sizeRange" type="range" min="1" max="60" value="4">
+        </div>
+        <button id="undoBtn" class="btn" title="Undo last local stroke">↶ Undo</button>
+        <button id="clearBtn" class="btn" title="Clear board">Clear</button>
+      </div>
+
+      <div class="right">
+        <button id="exportBtn" class="btn" title="Save as PNG">💾 Save</button>
+        <button id="exportJson" class="btn" title="Export session JSON">⬇️ Export</button>
+        <button id="importJson" class="btn" title="Import session JSON">⬆️ Import</button>
+        <button id="collabBtn" class="btn" title="Collaborate (Peer-to-peer)">🔗 Collaborate</button>
+      </div>
+    </header>
+
+    <main>
+      <div id="board-wrap">
+        <canvas id="board"></canvas>
+        <div class="panel" style="right:12px;left:auto;top:12px">
+          <div class="row"><div class="label">Status:</div><div id="status" class="label">Local</div></div>
+          <div style="height:8px"></div>
+          <div class="row"><div class="label">Peers:</div><div id="peers" class="label">0</div></div>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <div style="font-size:13px;color:var(--muted)">Simple, local-first collaborative whiteboard. Use the "Collaborate" button to connect peer-to-peer by copying offers/answers (no servers).</div>
+    </footer>
+  </div>
+
+  <!-- Modal for collaboration & import/export -->
+  <div id="modal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal" role="document">
+      <h3 id="modalTitle">Collaborate (Peer-to-peer)</h3>
+      <div id="modalBody">
+        <p style="color:var(--muted);font-size:13px">This mode uses WebRTC data channels. To connect two browsers without a signaling server, copy-paste the Offer/Answer text between peers.</p>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <div style="flex:1">
+            <div class="label">Local (Offer / Answer)</div>
+            <textarea id="localText" placeholder="Offer / Answer appears here"></textarea>
+          </div>
+          <div style="flex:1">
+            <div class="label">Remote (Paste other's SDP here)</div>
+            <textarea id="remoteText" placeholder="Paste remote Offer / Answer here"></textarea>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px;justify-content:flex-end">
+          <button id="createOffer" class="btn">Create Offer</button>
+          <button id="createAnswer" class="btn">Create Answer</button>
+          <button id="applyRemote" class="btn">Apply Remote</button>
+          <button id="closeModal" class="btn">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // -- Canvas setup
+    const canvas = document.getElementById('board');
+    const wrap = document.getElementById('board-wrap');
+    function fit() {
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.floor(wrap.clientWidth * dpr);
+      canvas.height = Math.floor(wrap.clientHeight * dpr);
+      canvas.style.width = wrap.clientWidth + 'px';
+      canvas.style.height = wrap.clientHeight + 'px';
+      ctx.setTransform(dpr,0,0,dpr,0,0);
+      redrawAll();
+    }
+    window.addEventListener('resize', fit);
+    const ctx = canvas.getContext('2d',{alpha:true});
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+    // drawing state
+    let drawing=false, last=null;
+    let tool='pen';
+    const strokes = []; // list of {tool,color,size,points}
+    let currentStroke = null;
+
+    // DOM elements
+    const penBtn = document.getElementById('penBtn');
+    const eraserBtn = document.getElementById('eraserBtn');
+    const colorPicker = document.getElementById('colorPicker');
+    const sizeRange = document.getElementById('sizeRange');
+    const clearBtn = document.getElementById('clearBtn');
+    const undoBtn = document.getElementById('undoBtn');
+    const exportBtn = document.getElementById('exportBtn');
+    const exportJson = document.getElementById('exportJson');
+    const importJson = document.getElementById('importJson');
+    const collabBtn = document.getElementById('collabBtn');
+    const modal = document.getElementById('modal');
+    const localText = document.getElementById('localText');
+    const remoteText = document.getElementById('remoteText');
+    const createOffer = document.getElementById('createOffer');
+    const createAnswer = document.getElementById('createAnswer');
+    const applyRemote = document.getElementById('applyRemote');
+    const closeModal = document.getElementById('closeModal');
+    const statusEl = document.getElementById('status');
+    const peersEl = document.getElementById('peers');
+
+    function setActiveButton(which){
+      penBtn.classList.toggle('active', which==='pen');
+      eraserBtn.classList.toggle('active', which==='eraser');
+    }
+
+    penBtn.onclick = ()=>{ tool='pen'; setActiveButton('pen'); }
+    eraserBtn.onclick = ()=>{ tool='eraser'; setActiveButton('eraser'); }
+    sizeRange.oninput = ()=>{};
+
+    function clientPoint(e){
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX ?? e.touches?.[0]?.clientX) - rect.left;
+      const y = (e.clientY ?? e.touches?.[0]?.clientY) - rect.top;
+      return {x,y};
+    }
+
+    function beginStroke(pt){
+      drawing = true;
+      currentStroke = {tool, color:colorPicker.value, size: +sizeRange.value, points:[pt], id:Date.now()+"-"+Math.random().toString(36).slice(2)};
+      last = pt;
+    }
+    function continueStroke(pt){
+      if(!drawing || !currentStroke) return;
+      currentStroke.points.push(pt);
+      drawSegment(last, pt, currentStroke);
+      last = pt;
+      // broadcast
+      sendMessage({type:'stroke-part', strokeId: currentStroke.id, point:pt});
+    }
+    function endStroke(){
+      if(!drawing || !currentStroke) return;
+      strokes.push(currentStroke);
+      sendMessage({type:'stroke-end', stroke: currentStroke});
+      drawing=false; currentStroke=null; last=null;
+    }
+
+    function drawSegment(a,b,s){
+      ctx.save();
+      if(s.tool==='eraser'){
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.strokeStyle = 'rgba(0,0,0,1)';
+      } else {
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.strokeStyle = s.color;
+      }
+      ctx.lineWidth = s.size;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // redraw all strokes (used on resize)
+    function redrawAll(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      for(const s of strokes){
+        for(let i=1;i<s.points.length;i++) drawSegment(s.points[i-1], s.points[i], s);
+      }
+    }
+
+    // pointer events
+    canvas.addEventListener('pointerdown', (e) => {
+      canvas.setPointerCapture(e.pointerId);
+      const pt = clientPoint(e);
+      beginStroke(pt);
+      sendMessage({type:'stroke-start', strokeMeta:{tool, color:colorPicker.value, size:+sizeRange.value, id: currentStroke.id}});
+    });
+    canvas.addEventListener('pointermove', (e) => {
+      if(!drawing) return;
+      continueStroke(clientPoint(e));
+    });
+    canvas.addEventListener('pointerup', (e) => {
+      canvas.releasePointerCapture(e.pointerId);
+      endStroke();
+    });
+    canvas.addEventListener('pointercancel', ()=> endStroke());
+
+    // buttons
+    clearBtn.onclick = ()=>{
+      if(!confirm('Clear the board for everyone?')) return;
+      strokes.length=0; redrawAll();
+      sendMessage({type:'clear'});
+    }
+    undoBtn.onclick = ()=>{
+      // undo last local stroke
+      if(strokes.length){ strokes.pop(); redrawAll(); sendMessage({type:'undo'}); }
+    }
+    exportBtn.onclick = ()=>{ // save as PNG
+      const url = canvas.toDataURL('image/png');
+      const a=document.createElement('a'); a.href=url; a.download='whiteboard.png'; a.click();
+    }
+    exportJson.onclick = ()=>{
+      const payload = JSON.stringify({strokes}, null, 2);
+      const blob = new Blob([payload],{type:'application/json'});
+      const a=document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='whiteboard.json'; a.click();
+    }
+    importJson.onclick = ()=>{
+      const input=document.createElement('input'); input.type='file'; input.accept='.json,application/json';
+      input.onchange = async (ev)=>{
+        const f = ev.target.files[0]; if(!f) return;
+        const txt = await f.text();
+        try{ const obj = JSON.parse(txt); if(Array.isArray(obj.strokes)){
+          strokes.length=0; for(const s of obj.strokes) strokes.push(s); redrawAll(); sendMessage({type:'import', strokes: obj.strokes});
+        } else alert('Invalid file'); } catch(err){alert('Parse error: '+err.message)}
+      };
+      input.click();
+    }
+
+    // simple local persistence
+    window.addEventListener('beforeunload', ()=> localStorage.setItem('wb_strokes', JSON.stringify(strokes)));
+    try{ const saved = JSON.parse(localStorage.getItem('wb_strokes')||'null'); if(saved && Array.isArray(saved)) { saved.forEach(s=>strokes.push(s)); }
+    } catch(e){ }
+
+    fit(); // initial size
+
+    // ====== Collaboration: WebRTC DataChannel with manual signaling (copy/paste) ======
+    let pc = null; let dc = null; let peersCount = 0;
+    function setStatus(s){ statusEl.textContent = s; }
+    function setPeers(n){ peersEl.textContent = n; }
+
+    collabBtn.onclick = ()=>{ modal.style.display='flex'; }
+    closeModal.onclick = ()=>{ modal.style.display='none'; }
+
+    function ensurePC(){
+      if(pc) return pc;
+      pc = new RTCPeerConnection();
+      pc.onicecandidate = (e)=>{
+        // append trimmed local description whenever ICE candidate changes
+        localText.value = JSON.stringify(pc.localDescription);
+      };
+      pc.ondatachannel = (ev)=>{
+        setupDC(ev.channel);
+      };
+      pc.onconnectionstatechange = ()=>{
+        setStatus(pc.connectionState);
+      };
+      return pc;
+    }
+    function setupDC(channel){
+      dc = channel;
+      dc.onopen = ()=>{ setStatus('connected'); }
+      dc.onclose = ()=>{ setStatus('closed'); }
+      dc.onmessage = (ev)=>{ try{ const msg = JSON.parse(ev.data); handleRemoteMessage(msg); } catch(e){} };
+      // show peers count locally
+      dc.onopen = ()=>{ peersCount = 1; setPeers(peersCount); setStatus('connected'); };
+      dc.onclose = ()=>{ peersCount = 0; setPeers(peersCount); setStatus('disconnected'); };
+    }
+
+    createOffer.onclick = async ()=>{
+      const pc = ensurePC();
+      const channel = pc.createDataChannel('whiteboard');
+      setupDC(channel);
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      // localText will be filled by onicecandidate as candidates arrive; also set immediately
+      localText.value = JSON.stringify(pc.localDescription);
+      alert('Share the Offer text with your peer. They will paste their Answer back here.');
+    };
+
+    createAnswer.onclick = async ()=>{
+      // Assumes remoteText contains an offer
+      const pc = ensurePC();
+      try{
+        const offer = JSON.parse(remoteText.value);
+        await pc.setRemoteDescription(offer);
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        localText.value = JSON.stringify(pc.localDescription);
+        alert('Send the Answer text back to the peer who created the Offer.');
+      } catch(err){ alert('Invalid offer: '+err); }
+    };
+
+    applyRemote.onclick = async ()=>{
+      if(!remoteText.value) return alert('Paste remote SDP into the right box first');
+      const pc = ensurePC();
+      try{
+        const obj = JSON.parse(remoteText.value);
+        await pc.setRemoteDescription(obj);
+        alert('Remote applied. If both peers completed steps, connection should go to "connected".');
+      } catch(err){ alert('Failed to apply remote: '+err); }
+    };
+
+    function sendMessage(msg){
+      // send via DataChannel when available
+      if(dc && dc.readyState==='open'){
+        try{ dc.send(JSON.stringify(msg)); } catch(e){ console.warn('send failed',e); }
+      }
+      // also apply locally to keep consistent across browser instances
+      applyRemoteMessageLocally(msg, /*originLocal=*/true);
+    }
+
+    // When receiving a remote message, apply it
+    function handleRemoteMessage(msg){
+      applyRemoteMessageLocally(msg, /*originLocal=*/false);
+    }
+
+    function applyRemoteMessageLocally(msg, originLocal){
+      switch(msg.type){
+        case 'stroke-start':{
+          // create a temporary stroke container
+          const meta = msg.strokeMeta || {};
+          const s = {tool: meta.tool || 'pen', color: meta.color || '#fff', size: meta.size||4, points:[], id: meta.id || ('r-'+Date.now())};
+          // store in an ephemeral map by id
+          remoteTemp[msg.strokeMeta?.id||s.id] = s;
+          break;
+        }
+        case 'stroke-part':{
+          const id = msg.strokeId;
+          const p = msg.point;
+          let s = remoteTemp[id];
+          if(!s){ // if not exist, create generic
+            s = {tool:'pen',color:'#fff',size:4,points:[],id}; remoteTemp[id]=s;
+          }
+          s.points.push(p);
+          // draw last segment
+          if(s.points.length>=2) drawSegment(s.points[s.points.length-2], s.points[s.points.length-1], s);
+          break;
+        }
+        case 'stroke-end':{
+          const s = msg.stroke;
+          if(s){
+            strokes.push(s);
+            // clean remote temp
+            delete remoteTemp[s.id];
+          }
+          break;
+        }
+        case 'clear':{
+          strokes.length=0; redrawAll(); break;
+        }
+        case 'undo':{
+          if(strokes.length){ strokes.pop(); redrawAll(); }
+          break;
+        }
+        case 'import':{
+          if(Array.isArray(msg.strokes)){
+            strokes.length=0; for(const s of msg.strokes) strokes.push(s); redrawAll();
+          }
+          break;
+        }
+      }
+    }
+
+    const remoteTemp = {};
+
+    // keyboard shortcuts
+    window.addEventListener('keydown', (e)=>{
+      if((e.ctrlKey||e.metaKey) && e.key==='s'){ e.preventDefault(); exportBtn.click(); }
+      if((e.ctrlKey||e.metaKey) && e.key==='z'){ e.preventDefault(); undoBtn.click(); }
+      if(e.key==='e') { tool='eraser'; setActiveButton('eraser'); }
+      if(e.key==='p') { tool='pen'; setActiveButton('pen'); }
+    });
+
+    // small UX: click canvas with two fingers to toggle eraser
+    canvas.addEventListener('dblclick', ()=>{ tool = tool==='pen'?'eraser':'pen'; setActiveButton(tool); });
+
+    // initial instructions as small overlay (handled via footer)
+
+    // accessibility: focus management for modal
+    modal.addEventListener('click', (ev)=>{ if(ev.target===modal) modal.style.display='none'; });
+
+    // end script
+  </script>
+</body>
+</html>

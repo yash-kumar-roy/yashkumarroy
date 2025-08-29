@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python Quiz App</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #3776ab, #ffd43b);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .quiz-container {
+            padding: 40px;
+        }
+
+        .question-card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border-left: 5px solid #3776ab;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+
+        .question-number {
+            color: #3776ab;
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+        }
+
+        .question-text {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .options {
+            display: grid;
+            gap: 15px;
+        }
+
+        .option {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .option:hover {
+            border-color: #3776ab;
+            background: #f0f7ff;
+            transform: translateX(5px);
+        }
+
+        .option input[type="radio"] {
+            margin-right: 15px;
+            transform: scale(1.2);
+            accent-color: #3776ab;
+        }
+
+        .option label {
+            cursor: pointer;
+            font-size: 1rem;
+            color: #555;
+            flex: 1;
+        }
+
+        .submit-btn {
+            background: linear-gradient(135deg, #3776ab, #ffd43b);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: block;
+            margin: 40px auto 0;
+            box-shadow: 0 5px 15px rgba(55, 118, 171, 0.3);
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(55, 118, 171, 0.4);
+        }
+
+        .results {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .score-circle {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            margin: 0 auto 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            font-weight: bold;
+            color: white;
+            position: relative;
+        }
+
+        .score-excellent {
+            background: linear-gradient(135deg, #28a745, #20c997);
+        }
+
+        .score-good {
+            background: linear-gradient(135deg, #ffc107, #fd7e14);
+        }
+
+        .score-needs-improvement {
+            background: linear-gradient(135deg, #dc3545, #e83e8c);
+        }
+
+        .performance-text {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .performance-excellent { color: #28a745; }
+        .performance-good { color: #fd7e14; }
+        .performance-needs-improvement { color: #dc3545; }
+
+        .detailed-results {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 30px;
+            text-align: left;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .correct { color: #28a745; }
+        .incorrect { color: #dc3545; }
+
+        .restart-btn {
+            background: linear-gradient(135deg, #6c757d, #495057);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1rem;
+            border-radius: 25px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .restart-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 5px 15px rgba(108, 117, 125, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+            
+            .header {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .quiz-container {
+                padding: 20px;
+            }
+            
+            .score-circle {
+                width: 150px;
+                height: 150px;
+                font-size: 2.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🐍 Python Quiz</h1>
+            <p>Test your Python knowledge with 10 challenging questions</p>
+        </div>
+
+        <div id="quiz" class="quiz-container">
+            <!-- Questions will be loaded here -->
+        </div>
+
+        <div id="results" class="results">
+            <!-- Results will be shown here -->
+        </div>
+    </div>
+
+    <script>
+        const quizData = [
+            {
+                question: "What is the output of print(type([]))?",
+                options: ["<class 'list'>", "<class 'array'>", "<class 'tuple'>", "<class 'dict'>"],
+                correct: 0
+            },
+            {
+                question: "Which of the following is used to define a function in Python?",
+                options: ["function", "def", "define", "func"],
+                correct: 1
+            },
+            {
+                question: "What does the 'len()' function return?",
+                options: ["The last element", "The data type", "The length of an object", "The first element"],
+                correct: 2
+            },
+            {
+                question: "Which operator is used for floor division in Python?",
+                options: ["/", "//", "%", "**"],
+                correct: 1
+            },
+            {
+                question: "What is the correct way to create a dictionary in Python?",
+                options: ["dict = []", "dict = ()", "dict = {}", "dict = <>"],
+                correct: 2
+            },
+            {
+                question: "Which method is used to add an element to the end of a list?",
+                options: ["add()", "append()", "insert()", "extend()"],
+                correct: 1
+            },
+            {
+                question: "What is the output of '3' + '2' in Python?",
+                options: ["5", "'32'", "'5'", "Error"],
+                correct: 1
+            },
+            {
+                question: "Which keyword is used to create a class in Python?",
+                options: ["class", "Class", "def", "object"],
+                correct: 0
+            },
+            {
+                question: "What does the 'range(5)' function generate?",
+                options: ["[1, 2, 3, 4, 5]", "[0, 1, 2, 3, 4]", "[0, 1, 2, 3, 4, 5]", "[1, 2, 3, 4]"],
+                correct: 1
+            },
+            {
+                question: "Which of the following is NOT a valid Python data type?",
+                options: ["int", "float", "char", "bool"],
+                correct: 2
+            }
+        ];
+
+        let currentQuiz = [];
+        let userAnswers = [];
+
+        function loadQuiz() {
+            const quizContainer = document.getElementById('quiz');
+            quizContainer.innerHTML = '';
+
+            quizData.forEach((q, index) => {
+                const questionDiv = document.createElement('div');
+                questionDiv.className = 'question-card';
+                questionDiv.innerHTML = `
+                    <div class="question-number">Question ${index + 1} of ${quizData.length}</div>
+                    <div class="question-text">${q.question}</div>
+                    <div class="options">
+                        ${q.options.map((option, optionIndex) => `
+                            <div class="option">
+                                <input type="radio" id="q${index}_${optionIndex}" name="question_${index}" value="${optionIndex}">
+                                <label for="q${index}_${optionIndex}">${option}</label>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                quizContainer.appendChild(questionDiv);
+            });
+
+            const submitButton = document.createElement('button');
+            submitButton.className = 'submit-btn';
+            submitButton.textContent = 'Submit Quiz';
+            submitButton.onclick = submitQuiz;
+            quizContainer.appendChild(submitButton);
+        }
+
+        function submitQuiz() {
+            userAnswers = [];
+            let allAnswered = true;
+
+            quizData.forEach((q, index) => {
+                const selectedOption = document.querySelector(`input[name="question_${index}"]:checked`);
+                if (selectedOption) {
+                    userAnswers[index] = parseInt(selectedOption.value);
+                } else {
+                    allAnswered = false;
+                }
+            });
+
+            if (!allAnswered) {
+                alert('Please answer all questions before submitting!');
+                return;
+            }
+
+            showResults();
+        }
+
+        function showResults() {
+            document.getElementById('quiz').style.display = 'none';
+            const resultsContainer = document.getElementById('results');
+            resultsContainer.style.display = 'block';
+
+            let correctAnswers = 0;
+            quizData.forEach((q, index) => {
+                if (userAnswers[index] === q.correct) {
+                    correctAnswers++;
+                }
+            });
+
+            const score = Math.round((correctAnswers / quizData.length) * 100);
+            let performance, performanceClass, scoreClass;
+
+            if (score >= 80) {
+                performance = "Excellent! 🎉";
+                performanceClass = "performance-excellent";
+                scoreClass = "score-excellent";
+            } else if (score >= 60) {
+                performance = "Good Job! 👍";
+                performanceClass = "performance-good";
+                scoreClass = "score-good";
+            } else {
+                performance = "Keep Learning! 📚";
+                performanceClass = "performance-needs-improvement";
+                scoreClass = "score-needs-improvement";
+            }
+
+            resultsContainer.innerHTML = `
+                <div class="score-circle ${scoreClass}">
+                    ${score}%
+                </div>
+                <div class="performance-text ${performanceClass}">${performance}</div>
+                <p><strong>${correctAnswers} out of ${quizData.length}</strong> questions answered correctly</p>
+                
+                <div class="detailed-results">
+                    <h3 style="margin-bottom: 20px; color: #333;">Detailed Results:</h3>
+                    ${quizData.map((q, index) => `
+                        <div class="result-item">
+                            <div>
+                                <strong>Q${index + 1}:</strong> ${q.question.substring(0, 50)}${q.question.length > 50 ? '...' : ''}
+                            </div>
+                            <div class="${userAnswers[index] === q.correct ? 'correct' : 'incorrect'}">
+                                ${userAnswers[index] === q.correct ? '✓ Correct' : '✗ Wrong'}
+                            </div>
+                        </div>
+                        ${userAnswers[index] !== q.correct ? `
+                            <div style="margin-left: 20px; color: #6c757d; font-size: 0.9rem; margin-bottom: 10px;">
+                                Your answer: ${q.options[userAnswers[index]]}<br>
+                                Correct answer: ${q.options[q.correct]}
+                            </div>
+                        ` : ''}
+                    `).join('')}
+                </div>
+                
+                <button class="restart-btn" onclick="restartQuiz()">Take Quiz Again</button>
+            `;
+        }
+
+        function restartQuiz() {
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('quiz').style.display = 'block';
+            userAnswers = [];
+            
+            // Clear all radio buttons
+            document.querySelectorAll('input[type="radio"]').forEach(input => {
+                input.checked = false;
+            });
+        }
+
+        // Initialize the quiz when page loads
+        window.onload = function() {
+            loadQuiz();
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Catch the Fruits — Kids Game</title>
+<style>
+  :root{
+    --bg:linear-gradient(180deg,#fff7ed,#ffedd5);
+    --panel:#ffffff; --accent:#ff5a5f; --accent2:#ffb703; --muted:#6b7280;
+  }
+  html,body{height:100%;margin:0;font-family:Inter,system-ui,system-ui,-apple-system,Segoe UI,Roboto,Arial}
+  body{background:var(--bg);display:flex;align-items:center;justify-content:center}
+  .game-wrap{width:100%;max-width:980px;margin:24px;box-shadow:0 20px 50px rgba(2,6,23,0.12);border-radius:16px;overflow:hidden;background:linear-gradient(180deg,#fff,#fffbf7)}
+  header{padding:12px 16px;display:flex;align-items:center;gap:12px;background:linear-gradient(90deg,#ffecd2,#fcb69f);border-bottom:4px solid rgba(0,0,0,0.03)}
+  h1{margin:0;font-size:20px;color:#3b2f2f}
+  .hud{margin-left:auto;display:flex;gap:12px;align-items:center}
+  .score{font-weight:800;color:#0f1724;background:linear-gradient(90deg,#fff,#fff0);padding:6px 10px;border-radius:8px;box-shadow:0 6px 12px rgba(2,6,23,0.06)}
+  .lives{display:flex;gap:6px;align-items:center}
+  .btn{background:#10b981;color:white;padding:8px 12px;border-radius:10px;border:none;cursor:pointer;font-weight:700}
+  .btn.secondary{background:#7c3aed}
+  .canvas-wrap{position:relative;background:linear-gradient(180deg,#a8edea,#fed6e3);min-height:480px}
+  canvas{display:block;width:100%;height:100%}
+  /* overlays */
+  .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+  .panel{pointer-events:auto;background:rgba(255,255,255,0.95);backdrop-filter:blur(4px);padding:18px;border-radius:12px;text-align:center;box-shadow:0 10px 30px rgba(2,6,23,0.12)}
+  .panel h2{margin:0 0 8px 0}
+  .controls{display:flex;gap:8px;justify-content:center;margin-top:10px}
+  .small{font-size:13px;color:var(--muted)}
+  .footer{padding:10px 16px;display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:13px}
+
+  @media (max-width:600px){ header h1{font-size:16px} .panel{width:90%} }
+</style>
+</head>
+<body>
+  <div class="game-wrap">
+    <header>
+      <h1>Catch the Fruits 🍎🍌</h1>
+      <div class="hud">
+        <div class="score" id="score">Score: 0</div>
+        <div class="lives" id="lives"></div>
+        <button id="startBtn" class="btn">Start</button>
+        <button id="muteBtn" class="btn secondary">Mute</button>
+      </div>
+    </header>
+
+    <div class="canvas-wrap" id="stage">
+      <canvas id="gameCanvas"></canvas>
+      <div class="overlay" id="overlay">
+        <div class="panel" id="startPanel">
+          <h2>Catch the Fruits!</h2>
+          <div class="small">Move the basket with ← → arrows or drag with mouse/tap. Catch fruits to score. Miss 3 fruits and the game ends.</div>
+          <div class="controls"><button id="playNow" class="btn">Play Now</button><button id="howBtn" class="btn secondary">How to play</button></div>
+        </div>
+        <div class="panel" id="gameOverPanel" style="display:none">
+          <h2 id="gameOverTitle">Game Over</h2>
+          <div id="finalScore" style="font-weight:800;font-size:20px;margin-top:6px">Score: 0</div>
+          <div class="controls"><button id="restartBtn" class="btn">Play Again</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div>Bright, playful, smooth — designed for kids.</div>
+      <div>Use arrow keys or drag to move the basket.</div>
+    </div>
+  </div>
+
+<script>
+// --- Game constants ---
+const canvas = document.getElementById('gameCanvas');
+const stage = document.getElementById('stage');
+const overlay = document.getElementById('overlay');
+const startPanel = document.getElementById('startPanel');
+const gameOverPanel = document.getElementById('gameOverPanel');
+const startBtn = document.getElementById('startBtn');
+const playNow = document.getElementById('playNow');
+const restartBtn = document.getElementById('restartBtn');
+const howBtn = document.getElementById('howBtn');
+const scoreEl = document.getElementById('score');
+const livesEl = document.getElementById('lives');
+const muteBtn = document.getElementById('muteBtn');
+const finalScore = document.getElementById('finalScore');
+const gameOverTitle = document.getElementById('gameOverTitle');
+
+let ctx; let W=800, H=480; let dpr = devicePixelRatio || 1;
+let running = false; let lastTime = 0;
+
+// player basket
+const player = {x:0,y:0,w:140,h:30, color:'#6b21a8', vx:0, speed:700};
+let mouseDown = false;
+
+// fruits
+const FRUIT_EMOJI = ['🍎','🍌','🍊','🍓','🍐','🍇','🍉'];
+const COLORS = ['#ff595e','#ffb703','#ffad5a','#f72585','#4cc9f0','#6a4c93','#06d6a0'];
+let fruits = [];
+let spawnTimer = 0; let spawnInterval = 800; // ms
+let score = 0; let misses = 0; const MAX_MISSES = 3;
+let muted = false;
+
+// --- Setup canvas ---
+function resize(){
+  const rect = stage.getBoundingClientRect(); W = rect.width; H = rect.height;
+  dpr = window.devicePixelRatio || 1; canvas.width = Math.floor(W*dpr); canvas.height = Math.floor(H*dpr); canvas.style.width = W+'px'; canvas.style.height = H+'px'; ctx = canvas.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
+  player.y = H - 48; player.w = Math.max(90, Math.min(160, W*0.18));
+  if(player.x===0) player.x = W/2 - player.w/2;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// --- Audio (simple) ---
+let audioCtx = null;
+function beep(freq=440,dur=0.08){ if(muted) return; try{ if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)(); const o = audioCtx.createOscillator(); const g = audioCtx.createGain(); o.connect(g); g.connect(audioCtx.destination); o.frequency.value = freq; o.start(); g.gain.setValueAtTime(0.0001, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.2, audioCtx.currentTime + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur); o.stop(audioCtx.currentTime + dur + 0.02);}catch(e){}
+}
+
+muteBtn.addEventListener('click', ()=>{ muted = !muted; muteBtn.textContent = muted? 'Unmute':'Mute'; });
+
+// --- Game mechanics ---
+function spawnFruit(){
+  const radius = Math.max(28, Math.min(44, W*0.04));
+  const x = Math.random()*(W - radius*2) + radius;
+  const vy = Math.random()*120 + 120 + Math.min(200, score*2); // speed up as score increases
+  const idx = Math.floor(Math.random()*FRUIT_EMOJI.length);
+  const f = {x, y:-radius, r: radius, vy, emoji: FRUIT_EMOJI[idx], color: COLORS[idx%COLORS.length] };
+  fruits.push(f);
+}
+
+function resetGame(){ fruits=[]; score=0; misses=0; spawnTimer=0; spawnInterval=800; updateHUD(); }
+
+function startGame(){ resetGame(); running=true; lastTime = performance.now(); startPanel.style.display='none'; gameOverPanel.style.display='none'; overlay.style.display='none'; animate(lastTime); }
+
+function endGame(){ running=false; gameOverPanel.style.display='flex'; overlay.style.display='block'; finalScore.textContent = 'Score: ' + score; gameOverTitle.textContent = misses>=MAX_MISSES ? 'Game Over 🙁' : 'Stopped'; startPanel.style.display='none'; overlay.style.pointerEvents='auto'; }
+
+// update HUD
+function updateHUD(){ scoreEl.textContent = 'Score: ' + score; livesEl.innerHTML = ''; for(let i=0;i<MAX_MISSES;i++){ const heart = document.createElement('div'); heart.textContent = i< (MAX_MISSES - misses) ? '❤️':'🖤'; heart.style.fontSize='18px'; livesEl.appendChild(heart);} }
+
+// collision: simple AABB vs circle-bottom
+function catchCheck(f){
+  const basketTop = player.y;
+  if(f.y + f.r >= basketTop && f.y - f.r <= player.y + player.h){
+    const left = player.x; const right = player.x + player.w;
+    if(f.x >= left - f.r && f.x <= right + f.r){
+      return true;
+    }
+  }
+  return false;
+}
+
+// input: keyboard
+const keys = {};
+window.addEventListener('keydown', (e)=>{ keys[e.key] = true; if(e.key==='ArrowLeft' || e.key==='ArrowRight') e.preventDefault(); });
+window.addEventListener('keyup', (e)=>{ keys[e.key] = false; });
+
+// input: mouse / touch
+canvas.addEventListener('mousemove', (e)=>{ const rect = canvas.getBoundingClientRect(); const mx = e.clientX - rect.left; player.x = mx - player.w/2; clampPlayer(); });
+canvas.addEventListener('touchmove', (e)=>{ e.preventDefault(); const t = e.touches[0]; const rect = canvas.getBoundingClientRect(); const mx = t.clientX - rect.left; player.x = mx - player.w/2; clampPlayer(); }, {passive:false});
+canvas.addEventListener('mousedown', ()=>{ mouseDown = true; });
+canvas.addEventListener('mouseup', ()=>{ mouseDown = false; });
+
+function clampPlayer(){ player.x = Math.max(8, Math.min(W - player.w - 8, player.x)); }
+
+// main loop
+function animate(t){ if(!running) return; const dt = Math.min(40, t - lastTime); lastTime = t;
+  // spawn control
+  spawnTimer += dt; if(spawnTimer > spawnInterval){ spawnTimer = 0; spawnInterval = Math.max(420, 800 - Math.floor(score*6)); spawnFruit(); }
+  // update player via keys
+  if(keys['ArrowLeft']){ player.x -= player.speed * (dt/1000); }
+  if(keys['ArrowRight']){ player.x += player.speed * (dt/1000); }
+  clampPlayer();
+  // update fruits
+  for(let i=fruits.length-1;i>=0;i--){ const f = fruits[i]; f.y += f.vy * (dt/1000); // caught?
+    if(catchCheck(f)){
+      fruits.splice(i,1); score += 1; updateHUD(); beep(880,0.06);
+      // small burst animation (spawn tiny particles) - simple: create temporary score popup
+      continue; }
+    // missed
+    if(f.y - f.r > H){ fruits.splice(i,1); misses += 1; updateHUD(); beep(220,0.12); if(misses >= MAX_MISSES){ endGame(); return; } }
+  }
+  // draw
+  draw();
+  requestAnimationFrame(animate);
+}
+
+function draw(){ // clear
+  ctx.clearRect(0,0,W,H);
+  // background playful stripes
+  const g = ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,'#a8edea'); g.addColorStop(1,'#fed6e3'); ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+
+  // draw fruits
+  fruits.forEach(f=>{
+    // shadow
+    ctx.beginPath(); ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.ellipse(f.x+6, f.y+f.r+8, f.r*0.7, f.r*0.3, 0, 0, Math.PI*2); ctx.fill();
+    // circle
+    ctx.beginPath(); ctx.fillStyle = f.color; ctx.arc(f.x, f.y, f.r, 0, Math.PI*2); ctx.fill();
+    // emoji center
+    ctx.font = `${f.r}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle = '#fff'; ctx.fillText(f.emoji, f.x, f.y + (f.r*0.06));
+  });
+
+  // draw basket
+  const bx = player.x; const by = player.y; const bw = player.w; const bh = player.h;
+  // basket body
+  ctx.fillStyle = '#3b82f6'; ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 12); ctx.fill();
+  // basket rim
+  ctx.fillStyle = '#1e40af'; ctx.fillRect(bx, by-8, bw, 8);
+  // basket pattern
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 2; for(let i=1;i<5;i++){ ctx.beginPath(); ctx.moveTo(bx + (bw/5)*i, by-6); ctx.lineTo(bx + (bw/5)*i, by+bh); ctx.stroke(); }
+
+  // score (floating)
+  // already in HUD
+}
+
+// polyfill for roundRect
+if(!CanvasRenderingContext2D.prototype.roundRect){ CanvasRenderingContext2D.prototype.roundRect = function(x,y,w,h,r){ if(typeof r === 'number') r = {tl:r,tr:r,br:r,bl:r}; this.beginPath(); this.moveTo(x + r.tl, y); this.lineTo(x + w - r.tr, y); this.quadraticCurveTo(x + w, y, x + w, y + r.tr); this.lineTo(x + w, y + h - r.br); this.quadraticCurveTo(x + w, y + h, x + w - r.br, y + h); this.lineTo(x + r.bl, y + h); this.quadraticCurveTo(x, y + h, x, y + h - r.bl); this.lineTo(x, y + r.tl); this.quadraticCurveTo(x, y, x + r.tl, y); this.closePath(); }}
+
+// controls
+startBtn.addEventListener('click', ()=>{ if(!running) startGame(); else endGame(); });
+playNow.addEventListener('click', ()=> startGame()); restartBtn.addEventListener('click', ()=> startGame()); howBtn.addEventListener('click', ()=> alert('Use ← and → arrow keys or drag with mouse / touch to move the basket. Catch fruits before they hit the floor. Missing 3 fruits ends the game.'));
+
+// ensure initial HUD
+updateHUD();
+
+// keyboard focus for arrow keys
+window.addEventListener('load', ()=>{ window.focus(); });
+
+</script>
+</body>
+</html>

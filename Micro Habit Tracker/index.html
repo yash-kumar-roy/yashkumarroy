@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Micro Habit Tracker</title>
+<style>
+  :root{
+    --bg:#0f1724; --card:#071129; --muted:#9aa6b2; --accent:#06b6d4; --accent-2:#7c3aed;
+    --good:#10b981; --skip:#f59e0b; --bad:#ef4444;
+    --glass: rgba(255,255,255,0.04);
+    --max-habits:7;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial;background:linear-gradient(180deg,var(--bg),#071033);color:#e6f0f6}
+
+  .app{min-height:100vh;display:flex;flex-direction:column;gap:12px;padding:16px;align-items:center}
+  header{width:100%;max-width:980px;display:flex;align-items:center;gap:12px}
+  h1{margin:0;font-size:20px;letter-spacing:0.2px}
+  .lead{color:var(--muted);font-size:13px}
+
+  .board{width:100%;max-width:980px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:12px;padding:12px;border:1px solid rgba(255,255,255,0.04);box-shadow:0 10px 30px rgba(2,6,23,0.6)}
+
+  .topbar{display:flex;gap:8px;align-items:center}
+  .btn{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted);padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px}
+  .btn.primary{background:linear-gradient(90deg,var(--accent),var(--accent-2));border:0;color:#041024;font-weight:700}
+  .btn.ghost{background:transparent}
+
+  .content{display:flex;gap:12px;margin-top:12px}
+  .left{flex:1;min-width:220px}
+  .right{width:360px;max-width:40%}
+
+  .habit-list{display:flex;flex-direction:column;gap:8px}
+  .habit{display:flex;align-items:center;gap:10px;padding:8px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));border:1px solid rgba(255,255,255,0.02)}
+  .dot{width:38px;height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700}
+  .hmeta{flex:1}
+  .hname{font-weight:600}
+  .hsub{font-size:13px;color:var(--muted)}
+
+  .days{display:flex;gap:6px;align-items:center;overflow:auto;padding:8px 4px}
+  .day{width:36px;height:36px;flex:0 0 36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;border:1px solid rgba(255,255,255,0.03);cursor:pointer}
+  .day.good{background:linear-gradient(180deg, rgba(16,185,129,0.18), rgba(16,185,129,0.08));border-color:rgba(16,185,129,0.3);color:#dffaf0}
+  .day.skip{background:linear-gradient(180deg, rgba(245,158,11,0.13), rgba(245,158,11,0.06));border-color:rgba(245,158,11,0.2);color:#fff7e6}
+  .day.none{background:transparent;color:var(--muted)}
+
+  .stat{display:flex;gap:8px;align-items:center}
+  .streak{font-weight:700;color:var(--accent)}
+  .small{font-size:13px;color:var(--muted)}
+
+  .right .card{background:transparent;border:0;padding:0}
+  .chart{height:120px;border-radius:8px;padding:10px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));border:1px solid rgba(255,255,255,0.02);display:flex;flex-direction:column;gap:8px}
+  .spark{display:flex;gap:6px;align-items:end;height:56px}
+  .bar{width:12px;border-radius:4px;background:rgba(255,255,255,0.08)}
+
+  .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+
+  footer{width:100%;max-width:980px;color:var(--muted);font-size:13px;display:flex;justify-content:space-between}
+
+  /* responsive */
+  @media (max-width:900px){
+    .content{flex-direction:column}
+    .right{width:100%;max-width:100%}
+    .days{padding:6px}
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div style="display:flex;flex-direction:column;">
+        <h1>Micro Habit Tracker</h1>
+        <div class="lead">Track up to 7 daily micro habits — quick checkmarks, streaks, and simple charts.</div>
+      </div>
+    </header>
+
+    <div class="board">
+      <div class="topbar">
+        <button id="addHabit" class="btn primary">+ Add Habit</button>
+        <button id="exportBtn" class="btn">Export JSON</button>
+        <button id="importBtn" class="btn">Import JSON</button>
+        <div style="flex:1"></div>
+        <div class="small">Today: <strong id="todayLabel"></strong></div>
+      </div>
+
+      <div class="content">
+        <div class="left">
+          <div class="habit-list" id="habitList"></div>
+        </div>
+        <div class="right">
+          <div class="chart" id="overviewCard">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div style="font-weight:700">Weekly Overview</div>
+              <div class="small">Last 7 days</div>
+            </div>
+            <div class="spark" id="overviewSpark"></div>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div class="small">Total habits: <strong id="totalHabits">0</strong></div>
+              <div class="small">Avg completion: <strong id="avgComp">0%</strong></div>
+            </div>
+            <div class="controls">
+              <button id="clearData" class="btn ghost">Clear Data</button>
+              <button id="resetStreaks" class="btn ghost">Reset Streaks</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <footer>
+      <div>Compact • Inspiring • Mobile-ready</div>
+      <div>Local-only • JSON export/import</div>
+    </footer>
+  </div>
+
+  <!-- Edit/Add modal (simple) -->
+  <div id="modal" style="display:none;position:fixed;inset:0;background:rgba(2,6,23,0.6);align-items:center;justify-content:center">
+    <div style="background:var(--card);padding:16px;border-radius:10px;width:360px;max-width:92%;border:1px solid rgba(255,255,255,0.04)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><strong id="modalTitle">Add Habit</strong><button id="closeModal" class="btn">Close</button></div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <input id="habitName" placeholder="Habit name (e.g. 5-min reading)" style="padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit">
+        <input id="habitColor" type="color" value="#7c3aed" style="height:38px;border-radius:6px;border:0;padding:4px">
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button id="saveHabit" class="btn primary">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+// --- Data model ---
+const MAX_HABITS = 7;
+const STORAGE_KEY = 'micro_habits_v1';
+
+// demo data (few days)
+function demoData(){
+  const today = toISO(dateShift(new Date(),0));
+  const d1 = toISO(dateShift(new Date(),-1));
+  const d2 = toISO(dateShift(new Date(),-2));
+  const d3 = toISO(dateShift(new Date(),-3));
+  return {
+    habits: [
+      {id:uid(),name:'5‑min reading',color:'#7c3aed',records:{[d3]:'good',[d2]:'good',[d1]:'none',[today]:'good'}},
+      {id:uid(),name:'Meditate',color:'#06b6d4',records:{[d3]:'skip',[d2]:'good',[d1]:'good',[today]:'none'}},
+      {id:uid(),name:'Walk 10 min',color:'#10b981',records:{[d3]:'none',[d2]:'good',[d1]:'good',[today]:'good'}},
+    ],
+    created: toISO(new Date())
+  };
+}
+
+let store = load() || demoData();
+
+// --- Utils ---
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+function toISO(d){ const dt=new Date(d); dt.setHours(0,0,0,0); return dt.toISOString().slice(0,10); }
+function dateShift(d, offset){ const c=new Date(d); c.setDate(c.getDate()+offset); return c; }
+function load(){ try{ const raw = localStorage.getItem(STORAGE_KEY); return raw? JSON.parse(raw): null;}catch(e){return null;} }
+function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(store)); }
+
+// --- DOM refs ---
+const habitList = document.getElementById('habitList');
+const addHabit = document.getElementById('addHabit');
+const exportBtn = document.getElementById('exportBtn');
+const importBtn = document.getElementById('importBtn');
+const modal = document.getElementById('modal');
+const habitName = document.getElementById('habitName');
+const habitColor = document.getElementById('habitColor');
+const saveHabit = document.getElementById('saveHabit');
+const closeModal = document.getElementById('closeModal');
+const todayLabel = document.getElementById('todayLabel');
+const overviewSpark = document.getElementById('overviewSpark');
+const totalHabits = document.getElementById('totalHabits');
+const avgComp = document.getElementById('avgComp');
+const clearData = document.getElementById('clearData');
+const resetStreaks = document.getElementById('resetStreaks');
+
+let editingId = null;
+
+// compute last N days (including today)
+function lastNDays(n){ const arr=[]; for(let i=n-1;i>=0;i--){ arr.push(toISO(dateShift(new Date(), -i))); } return arr; }
+const DAYS = lastNDays(7);
+
+document.addEventListener('DOMContentLoaded', render);
+
+// --- Rendering ---
+function render(){
+  todayLabel.textContent = toISO(new Date());
+  habitList.innerHTML = '';
+  store.habits.forEach(h => habitList.appendChild(renderHabit(h)));
+  renderOverview();
+  totalHabits.textContent = store.habits.length;
+  save();
+}
+
+function renderHabit(h){
+  const el = document.createElement('div'); el.className='habit';
+  const dot = document.createElement('div'); dot.className='dot'; dot.style.background=h.color; dot.textContent = h.name.split(' ')[0][0] || '?';
+  const meta = document.createElement('div'); meta.className='hmeta';
+  const name = document.createElement('div'); name.className='hname'; name.textContent = h.name;
+  const sub = document.createElement('div'); sub.className='hsub'; sub.textContent = `Streak: ${calcStreak(h)} • Last: ${lastStatus(h)}`;
+  meta.appendChild(name); meta.appendChild(sub);
+
+  const daysWrap = document.createElement('div'); daysWrap.className='days';
+  DAYS.slice().reverse().forEach(dt=>{
+    const st = h.records[dt] || 'none';
+    const d = document.createElement('div'); d.className='day '+(st==='good'?'good':st==='skip'?'skip':'none'); d.title = dt; d.dataset.date = dt;
+    d.textContent = dt.slice(5);
+    d.addEventListener('click', ()=>{ cycleDay(h.id, dt); });
+    daysWrap.appendChild(d);
+  });
+
+  const actions = document.createElement('div'); actions.style.display='flex'; actions.style.gap='8px';
+  const edit = document.createElement('button'); edit.className='btn'; edit.textContent='Edit'; edit.addEventListener('click',()=>openEdit(h.id));
+  const del = document.createElement('button'); del.className='btn'; del.textContent='Delete'; del.addEventListener('click',()=>{ if(confirm('Delete this habit?')){ deleteHabit(h.id); }});
+  actions.appendChild(edit); actions.appendChild(del);
+
+  el.appendChild(dot); el.appendChild(meta); el.appendChild(daysWrap); el.appendChild(actions);
+  return el;
+}
+
+function renderOverview(){
+  // average completion across habits for last 7 days
+  const counts = DAYS.map(d => {
+    let total=0; let possible=0;
+    store.habits.forEach(h=>{
+      const r = h.records[d]; if(r==='good') total++; if(r!=='none') possible++; // skipped counts as attempted
+    });
+    return {d,total,possible};
+  });
+  // simple bars: height by completion percent
+  overviewSpark.innerHTML='';
+  let sumPct=0; let count=0;
+  counts.forEach(c=>{
+    const pct = store.habits.length? (c.total / store.habits.length) : 0;
+    sumPct += pct; count++;
+    const bar = document.createElement('div'); bar.className='bar'; bar.style.height = Math.max(6, Math.round(pct*56))+'px'; bar.title = `${c.d}: ${Math.round(pct*100)}%`;
+    overviewSpark.appendChild(bar);
+  });
+  const avg = count? Math.round((sumPct/count)*100) : 0;
+  avgComp.textContent = avg + '%';
+}
+
+// --- Actions ---
+addHabit.addEventListener('click', ()=>{
+  if(store.habits.length>=MAX_HABITS){ alert('Maximum '+MAX_HABITS+' habits allowed.'); return; }
+  editingId = null; habitName.value=''; habitColor.value='#7c3aed'; openModal();
+});
+
+saveHabit.addEventListener('click', ()=>{
+  const name = habitName.value.trim(); if(!name) { alert('Enter a habit name'); return; }
+  const color = habitColor.value;
+  if(editingId){
+    const h = store.habits.find(x=>x.id===editingId); if(h){ h.name = name; h.color = color; }
+  } else {
+    const h = {id:uid(),name,color,records:{}}; store.habits.push(h);
+  }
+  closeModalFunc(); render();
+});
+closeModal.addEventListener('click', closeModalFunc);
+function openModal(){ modal.style.display='flex'; document.getElementById('modalTitle').textContent = editingId? 'Edit Habit' : 'Add Habit'; }
+function closeModalFunc(){ modal.style.display='none'; editingId=null; }
+function openEdit(id){ const h = store.habits.find(x=>x.id===id); if(!h) return; editingId = id; habitName.value = h.name; habitColor.value = h.color || '#7c3aed'; openModal(); }
+
+function deleteHabit(id){ store.habits = store.habits.filter(h=>h.id!==id); render(); }
+
+function cycleDay(hid, date){
+  const h = store.habits.find(x=>x.id===hid); if(!h) return;
+  const cur = h.records[date] || 'none';
+  const next = cur==='none'? 'good' : cur==='good'? 'skip' : 'none';
+  h.records[date] = next;
+  // remove none entries to keep data small
+  if(h.records[date]==='none') delete h.records[date];
+  render();
+}
+
+function calcStreak(h){
+  // count consecutive good days up to today, skipping 'skip' (doesn't break streak)
+  let streak=0; for(let i=0;i<DAYS.length;i++){ const d = DAYS[DAYS.length-1 - i]; const s = h.records[d] || 'none'; if(s==='good'){ streak++; } else if(s==='skip'){ continue; } else break; } return streak;
+}
+function lastStatus(h){ const d = DAYS[DAYS.length-1]; return h.records[d]||'none'; }
+
+// export/import
+exportBtn.addEventListener('click', ()=>{
+  const blob = new Blob([JSON.stringify(store, null, 2)], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'micro_habits.json'; a.click();
+});
+
+importBtn.addEventListener('click', ()=>{
+  const inp = document.createElement('input'); inp.type='file'; inp.accept='application/json'; inp.onchange = async (ev)=>{
+    const f = ev.target.files[0]; if(!f) return; try{ const txt = await f.text(); const data = JSON.parse(txt); if(Array.isArray(data.habits)){ store = data; save(); render(); alert('Imported.'); } else alert('Invalid file'); } catch(e){ alert('Parse error: '+e); }
+  }; inp.click();
+});
+
+clearData.addEventListener('click', ()=>{ if(confirm('Clear all recorded days (keeps habit names)?')){ store.habits.forEach(h=>h.records={}); save(); render(); } });
+resetStreaks.addEventListener('click', ()=>{ if(confirm('Reset streaks and clear recent days?')){ store.habits.forEach(h=>h.records={}); save(); render(); } });
+
+// init rendering
+render();
+
+</script>
+</body>
+</html>

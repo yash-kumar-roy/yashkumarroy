@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Todo — Single File App</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f0f0f0; margin: 0; padding: 0; }
+    .app { max-width: 600px; margin: 20px auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    h1 { margin-top: 0; }
+    input, select, button { padding: 8px; margin: 4px; }
+    .task { display: flex; align-items: center; justify-content: space-between; padding: 8px; border-bottom: 1px solid #ddd; }
+    .task.completed .title { text-decoration: line-through; color: gray; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>Todo List</h1>
+    <input id="newTask" type="text" placeholder="New task" />
+    <button id="addBtn">Add</button>
+    <div id="taskList"></div>
+  </div>
+
+  <script>
+    const newTaskInput = document.getElementById('newTask');
+    const addBtn = document.getElementById('addBtn');
+    const taskList = document.getElementById('taskList');
+    let tasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+
+    function saveTasks() {
+      localStorage.setItem('tasks', JSON.stringify(tasks));
+    }
+
+    function renderTasks() {
+      taskList.innerHTML = '';
+      tasks.forEach((task, index) => {
+        const taskEl = document.createElement('div');
+        taskEl.className = 'task' + (task.completed ? ' completed' : '');
+
+        const title = document.createElement('span');
+        title.className = 'title';
+        title.textContent = task.title;
+        title.addEventListener('click', () => {
+          task.completed = !task.completed;
+          saveTasks();
+          renderTasks();
+        });
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.addEventListener('click', () => {
+          tasks.splice(index, 1);
+          saveTasks();
+          renderTasks();
+        });
+
+        taskEl.appendChild(title);
+        taskEl.appendChild(deleteBtn);
+        taskList.appendChild(taskEl);
+      });
+    }
+
+    addBtn.addEventListener('click', () => {
+      const title = newTaskInput.value.trim();
+      if (!title) return;
+      tasks.push({ title, completed: false });
+      newTaskInput.value = '';
+      saveTasks();
+      renderTasks();
+    });
+
+    renderTasks();
+  </script>
+</body>
+</html>

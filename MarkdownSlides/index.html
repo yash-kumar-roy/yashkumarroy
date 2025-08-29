@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Markdown → Slides</title>
+<style>
+  :root{
+    --bg:#0b1220; --panel:#071027; --muted:#9ca6b3; --accent:#0ea5a4; --accent-2:#7c3aed; --card:#071227; --text:#e6eef8;
+    --surface: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  }
+  [data-theme='light']{ --bg:#f6f7fb; --panel:#ffffff; --muted:#586069; --accent:#0ea5a4; --accent-2:#7c3aed; --text:#0b1220; --card:#ffffff }
+
+  html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial;background:var(--bg);color:var(--text)}
+  .app{min-height:100vh;display:flex;flex-direction:column;gap:12px;padding:16px}
+
+  header{display:flex;align-items:center;gap:12px;max-width:1200px;margin:0 auto;width:100%}
+  h1{margin:0;font-size:18px}
+  .lead{color:var(--muted);font-size:13px}
+  .controls{margin-left:auto;display:flex;gap:8px}
+  .btn{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px 10px;border-radius:8px;color:var(--muted);cursor:pointer}
+  .btn.primary{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#07202a;border:0;font-weight:700}
+
+  .main{display:grid;grid-template-columns:1fr 560px;gap:16px;max-width:1200px;margin:0 auto;width:100%;align-items:start}
+  .editor{display:flex;flex-direction:column;gap:8px}
+  textarea{width:100%;min-height:60vh;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:var(--card);color:var(--text);font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', 'Courier New', monospace;font-size:14px}
+  .small{font-size:13px;color:var(--muted)}
+
+  .preview-wrap{display:flex;flex-direction:column;gap:8px}
+  .toolbar{display:flex;align-items:center;gap:8px}
+  .slide-stage{background:var(--surface);border-radius:12px;padding:18px;min-height:60vh;border:1px solid rgba(255,255,255,0.04);position:relative;display:flex;align-items:center;justify-content:center}
+
+  .slide{width:100%;height:100%;max-width:960px;max-height:540px;background:linear-gradient(180deg,#fff,#f7f9fb);color:#0b1220;padding:36px;border-radius:12px;box-shadow:0 16px 40px rgba(2,6,23,0.6);overflow:hidden;display:none;flex-direction:column}
+  .slide.dark{background:linear-gradient(180deg,#071227,#04101a);color:var(--text);box-shadow:none}
+  .slide.visible{display:flex}
+  .slide h1{font-size:32px;margin:0 0 6px 0}
+  .slide h2{font-size:26px;margin:0 0 6px 0}
+  .slide p{font-size:18px;line-height:1.4;margin:6px 0}
+  .slide ul{margin:8px 0 0 18px}
+  .slide code{background:rgba(0,0,0,0.04);padding:2px 6px;border-radius:6px;font-family:ui-monospace, SFMono-Regular, Menlo, Monaco}
+
+  .footer{display:flex;align-items:center;justify-content:space-between;margin-top:6px}
+  .progress{height:8px;background:rgba(255,255,255,0.04);border-radius:8px;overflow:hidden;width:100%;margin-left:12px}
+  .progress > span{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));width:0%}
+  .meta{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px}
+
+  .controls .toggle{display:inline-flex;align-items:center;gap:8px;padding:6px 8px;border-radius:999px;border:1px solid rgba(255,255,255,0.04)}
+
+  /* full-screen stage tweaks */
+  .fullscreen .slide{max-width:1400px;max-height:800px;padding:48px}
+
+  @media (max-width:1000px){ .main{grid-template-columns:1fr} .preview-wrap{order:-1} textarea{min-height:40vh} }
+</style>
+</head>
+<body data-theme="dark">
+<div class="app">
+  <header>
+    <div>
+      <h1>Markdown → Slides</h1>
+      <div class="lead">Write slides in Markdown (use <code>---</code> on its own line to separate slides). Live preview, keyboard nav, and themes.</div>
+    </div>
+    <div class="controls">
+      <button id="loadSample" class="btn">Load Sample</button>
+      <button id="fullscreenBtn" class="btn">⤢ Fullscreen</button>
+      <div class="toggle btn" id="themeToggle">Theme: <strong id="themeLabel">Dark</strong></div>
+      <button id="exportBtn" class="btn primary">Export HTML</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="editor">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div class="small">Markdown Input</div>
+        <div class="small">Slides separated by a line with <code>---</code></div>
+      </div>
+      <textarea id="mdInput" aria-label="Markdown input"></textarea>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div class="small">Preview updates live as you type.</div>
+        <div class="small">Keyboard: ← → to navigate • Enter to present</div>
+      </div>
+    </section>
+
+    <aside class="preview-wrap">
+      <div class="toolbar">
+        <div class="meta">Slide <strong id="currentIdx">0</strong> / <strong id="totalSlides">0</strong></div>
+        <div style="flex:1"></div>
+        <button id="prevBtn" class="btn">◀ Prev</button>
+        <button id="nextBtn" class="btn">Next ▶</button>
+      </div>
+
+      <div id="stage" class="slide-stage" tabindex="0">
+        <!-- slides injected here -->
+      </div>
+
+      <div class="footer">
+        <div class="meta"><span id="deckTitle" style="font-weight:700">Untitled Deck</span><span class="small">• Markdown → Slides</span></div>
+        <div style="display:flex;align-items:center;gap:12px;width:50%">
+          <div class="progress" aria-hidden="true"><span id="progressBar"></span></div>
+        </div>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<script>
+// --- Simple Markdown parser (supports headers, paragraphs, lists, code fences, inline bold/italic/code, links, images) ---
+function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function parseInline(text){
+  // code
+  text = text.replace(/`([^`]+)`/g, (m, p1)=> '<code>'+escapeHtml(p1)+'</code>');
+  // bold ** or __
+  text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  text = text.replace(/__(.+?)__/g, '<strong>$1</strong>');
+  // italic * or _
+  text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  text = text.replace(/_(.+?)_/g, '<em>$1</em>');
+  // links [text](url)
+  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer noopener">$1</a>');
+  // images ![alt](url)
+  text = text.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%;height:auto;border-radius:6px">');
+  return text;
+}
+
+function blockParse(md){
+  const lines = md.replace(/\r/g,'').split('\n');
+  let i = 0; const out = [];
+  while(i<lines.length){
+    const line = lines[i];
+    // code fence
+    if(/^```/.test(line)){
+      const lang = line.slice(3).trim(); i++; let code='';
+      while(i<lines.length && !/^```/.test(lines[i])){ code += lines[i++] + '\n'; }
+      i++; out.push({type:'code',lang,code:escapeHtml(code)}); continue;
+    }
+    // header
+    const h = line.match(/^(#{1,3})\s+(.*)$/);
+    if(h){ out.push({type:'h',level:h[1].length, text:parseInline(escapeHtml(h[2]))}); i++; continue; }
+    // list
+    if(/^\s*[-*+]\s+/.test(line)){
+      const items=[]; while(i<lines.length && /^\s*[-*+]\s+/.test(lines[i])){ items.push(parseInline(escapeHtml(lines[i].replace(/^\s*[-*+]\s+/,'')))); i++; }
+      out.push({type:'ul',items}); continue;
+    }
+    // empty
+    if(line.trim()===''){ out.push({type:'br'}); i++; continue; }
+    // paragraph (collect until blank)
+    let p = line; i++; while(i<lines.length && lines[i].trim()!==''){ p += ' '+lines[i++]; }
+    out.push({type:'p',text:parseInline(escapeHtml(p))});
+  }
+  return out;
+}
+
+function renderSlideHTML(md){
+  const blocks = blockParse(md);
+  const html = blocks.map(b=>{
+    if(b.type==='h') return `<h${b.level}>${b.text}</h${b.level}>`;
+    if(b.type==='p') return `<p>${b.text}</p>`;
+    if(b.type==='ul') return `<ul>${b.items.map(it=>'<li>'+it+'</li>').join('')}</ul>`;
+    if(b.type==='code') return `<pre><code>${b.code}</code></pre>`;
+    if(b.type==='br') return '<div style="height:8px"></div>';
+    return '';
+  }).join('\n');
+  return html;
+}
+
+// --- App logic ---
+const mdInput = document.getElementById('mdInput');
+const stage = document.getElementById('stage');
+const currentIdxEl = document.getElementById('currentIdx');
+const totalSlidesEl = document.getElementById('totalSlides');
+const progressBar = document.getElementById('progressBar');
+const themeToggle = document.getElementById('themeToggle');
+const themeLabel = document.getElementById('themeLabel');
+const fullscreenBtn = document.getElementById('fullscreenBtn');
+const loadSample = document.getElementById('loadSample');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const exportBtn = document.getElementById('exportBtn');
+const deckTitle = document.getElementById('deckTitle');
+
+let slides = [];
+let current = 0;
+let dark = true;
+
+function splitSlides(md){
+  // split on a line that contains only --- (3 or more dashes)
+  const parts = md.split(/\n-{3,}\n/gi).map(s=>s.trim()).filter(s=>s.length>0);
+  return parts.length? parts : [''];
+}
+
+function buildSlides(){
+  const md = mdInput.value || '';
+  slides = splitSlides(md);
+  // update DOM slides
+  stage.innerHTML = '';
+  slides.forEach((s, idx)=>{
+    const div = document.createElement('div'); div.className = 'slide';
+    if(dark) div.classList.add('dark');
+    if(idx===current) div.classList.add('visible');
+    div.setAttribute('data-idx', idx);
+    div.innerHTML = renderSlideHTML(s);
+    stage.appendChild(div);
+  });
+  updateMeta();
+}
+
+function updateMeta(){
+  totalSlidesEl.textContent = slides.length;
+  currentIdxEl.textContent = Math.min(current+1, slides.length);
+  const pct = slides.length? Math.round(((current)/ (slides.length-1||1)) * 100) : 0;
+  progressBar.style.width = pct + '%';
+}
+
+function showSlide(n){
+  if(n<0) n=0; if(n>=slides.length) n=slides.length-1;
+  const prev = stage.querySelector('.slide.visible'); if(prev) prev.classList.remove('visible');
+  current = n;
+  const el = stage.querySelector('.slide[data-idx="'+n+'"]'); if(el) el.classList.add('visible');
+  updateMeta();
+}
+
+// live preview
+mdInput.addEventListener('input', () => { buildSlides(); showSlide(0); deckTitle.textContent = extractTitle(slides[0]||'Untitled Deck'); });
+
+// keyboard nav
+window.addEventListener('keydown', (e)=>{
+  if(e.key==='ArrowRight' || e.key==='PageDown' || e.key===' '){ e.preventDefault(); nextSlide(); }
+  if(e.key==='ArrowLeft' || e.key==='PageUp'){ e.preventDefault(); prevSlide(); }
+  if(e.key==='Enter' && (e.metaKey || e.ctrlKey)){ toggleFullscreen(); }
+  if(e.key==='Home'){ showSlide(0); }
+  if(e.key==='End'){ showSlide(slides.length-1); }
+});
+
+prevBtn.addEventListener('click', prevSlide);
+nextBtn.addEventListener('click', nextSlide);
+
+function prevSlide(){ showSlide(Math.max(0, current-1)); }
+function nextSlide(){ showSlide(Math.min(slides.length-1, current+1)); }
+
+// theme toggle
+themeToggle.addEventListener('click', ()=>{ dark = !dark; document.body.setAttribute('data-theme', dark? 'dark':'light'); themeLabel.textContent = dark? 'Dark':'Light'; // update slides class
+  stage.querySelectorAll('.slide').forEach(s=> s.classList.toggle('dark', dark)); });
+
+// fullscreen
+function toggleFullscreen(){ if(!document.fullscreenElement){ stage.requestFullscreen().then(()=> document.body.classList.add('fullscreen')).catch(()=>{}); } else { document.exitFullscreen().then(()=> document.body.classList.remove('fullscreen')).catch(()=>{}); } }
+fullscreenBtn.addEventListener('click', toggleFullscreen);
+
+// load sample deck
+loadSample.addEventListener('click', ()=>{ mdInput.value = SAMPLE_MD; mdInput.dispatchEvent(new Event('input')); });
+
+// sample markdown
+const SAMPLE_MD = `# Company Strategy 2025\n\nWelcome to the quarterly review.\n\n---\n\n## Key Objectives\n- Expand product-market fit\n- Increase NPS to **45+**\n- Reduce churn by *2%* per quarter\n\n---\n\n## Roadmap (Q3)\n1. Launch pilot in EMEA\n2. Improve onboarding flow\n3. Scale infra for 2x traffic\n\n---\n\n## Metrics Snapshot\n\n\`ARR: $12.4M\`\n\nContact: [ops@company.com](mailto:ops@company.com)\n\n---\n\n# Thank you\n\nQuestions?`;
+
+// helper to extract first heading as title
+function extractTitle(firstSlide){
+  const m = firstSlide.match(/^#\s+(.+)$/m); return m? m[1] : 'Untitled Deck';
+}
+
+// export html (simple standalone single-file deck)
+exportBtn.addEventListener('click', ()=>{
+  const html = buildExportHTML();
+  const blob = new Blob([html], {type:'text/html'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'deck.html'; a.click();
+});
+
+function buildExportHTML(){
+  // embed slides HTML and simple navigation script
+  const slideHtml = slides.map(s=> `<section>${renderSlideHTML(s)}</section>`).join('\n');
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(deckTitle.textContent)}</title><style>body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;margin:0;background:#071227;color:#e6eef8}section{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;padding:60px;box-sizing:border-box}section>div{max-width:1100px}</style></head><body>${slideHtml}<script>let i=0;const s=document.querySelectorAll('section');function show(n){s.forEach((p,idx)=>p.style.display=idx===n?'flex':'none');}show(0);window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ') show(Math.min(s.length-1,++i)); if(e.key==='ArrowLeft') show(Math.max(0,--i));});</script></body></html>`;
+}
+
+// init
+mdInput.value = SAMPLE_MD;
+mdInput.dispatchEvent(new Event('input'));
+</script>
+</body>
+</html>

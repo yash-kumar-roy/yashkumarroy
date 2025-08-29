@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory Search</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            width: 100%;
+            max-width: 600px;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            font-weight: 300;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .search-section {
+            margin-bottom: 30px;
+        }
+
+        .search-container {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        #searchInput {
+            width: 100%;
+            padding: 15px 20px;
+            font-size: 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 50px;
+            background: white;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        #searchInput:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        #searchBtn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        #searchBtn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        #searchBtn:active {
+            transform: translateY(0);
+        }
+
+        .result-container {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 15px;
+            background: #f8f9fa;
+            border-left: 5px solid #667eea;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .result-success {
+            background: linear-gradient(135deg, #d4edda, #c3e6cb);
+            border-left-color: #28a745;
+            color: #155724;
+        }
+
+        .result-error {
+            background: linear-gradient(135deg, #f8d7da, #f1b0b7);
+            border-left-color: #dc3545;
+            color: #721c24;
+        }
+
+        .result-text {
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        .inventory-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 30px;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .inventory-table th,
+        .inventory-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .inventory-table th {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .inventory-table tr:hover {
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            color: #667eea;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .status-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: linear-gradient(135deg, #d4edda, #c3e6cb);
+            border-radius: 15px;
+            border-left: 5px solid #28a745;
+            text-align: center;
+            color: #155724;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Inventory Search</h1>
+        
+
+
+        <div class="search-section">
+            <div class="search-container">
+                <input 
+                    type="text" 
+                    id="searchInput" 
+                    placeholder="Enter product name to search inventory..."
+                    onkeypress="handleKeyPress(event)"
+                />
+            </div>
+            <button id="searchBtn" onclick="searchInventory()">Search Inventory</button>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Searching...</p>
+        </div>
+
+        <div class="result-container" id="resultContainer">
+            <div class="result-text">Enter a product name above to search inventory</div>
+        </div>
+
+        <table class="inventory-table" id="inventoryTable" style="display: none;">
+            <thead>
+                <tr>
+                    <th>Product Name</th>
+                    <th>Inventory</th>
+                </tr>
+            </thead>
+            <tbody id="inventoryBody">
+            </tbody>
+        </table>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.0/axios.min.js"></script>
+    
+    <script>
+        let inventoryData = [];
+        const API_BASE_URL = 'http://localhost:5000'; // Change this to your server URL
+
+        // Load inventory data from MySQL via API
+        async function loadInventoryFromDatabase() {
+            const statusDiv = document.getElementById('connectionStatus');
+            
+            try {
+                statusDiv.textContent = '🔌 Connecting to database...';
+                
+                const response = await fetch(`${API_BASE_URL}/api/inventory`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                inventoryData = data.map(item => [item.product_name.toLowerCase(), item.inventory]);
+                
+                statusDiv.innerHTML = '✅ Connected to database successfully!';
+                displayInventoryTable();
+                showResult('Ready to search inventory!', 'success');
+                
+            } catch (error) {
+                console.error('Database connection error:', error);
+                statusDiv.innerHTML = '❌ Unable to connect to database. Please try again later.';
+                showResult('❌ Database connection failed. Please contact support.', 'error');
+            }
+        }
+
+        function displayInventoryTable() {
+            const tbody = document.getElementById('inventoryBody');
+            const table = document.getElementById('inventoryTable');
+            
+            tbody.innerHTML = '';
+            
+            if (inventoryData.length === 0) {
+                table.style.display = 'none';
+                return;
+            }
+
+            inventoryData.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="text-transform: capitalize;">${row[0]}</td>
+                    <td>${row[1]}</td>
+                `;
+                tr.onclick = () => {
+                    document.getElementById('searchInput').value = row[0];
+                    searchInventory();
+                };
+                tbody.appendChild(tr);
+            });
+            
+            table.style.display = 'table';
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                searchInventory();
+            }
+        }
+
+        async function searchInventory() {
+            const searchTerm = document.getElementById('searchInput').value.trim().toLowerCase();
+            const loading = document.getElementById('loading');
+            const resultContainer = document.getElementById('resultContainer');
+
+            if (!searchTerm) {
+                showResult('❌ Please enter a product name to search', 'error');
+                return;
+            }
+
+            // Show loading animation
+            loading.style.display = 'block';
+            resultContainer.style.display = 'none';
+
+            try {
+                // Search directly in the API
+                const response = await fetch(`${API_BASE_URL}/api/search`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ product_name: searchTerm })
+                });
+
+                const result = await response.json();
+                
+                loading.style.display = 'none';
+                resultContainer.style.display = 'flex';
+
+                if (result.found) {
+                    showResult(`✅ Inventory for '${searchTerm}': ${result.inventory}`, 'success');
+                } else {
+                    showResult('❌ Product not found. Please try another.', 'error');
+                }
+
+            } catch (error) {
+                loading.style.display = 'none';
+                resultContainer.style.display = 'flex';
+                showResult('❌ Search failed. Please check your connection.', 'error');
+            }
+        }
+
+        function showResult(message, type) {
+            const resultContainer = document.getElementById('resultContainer');
+            const resultText = resultContainer.querySelector('.result-text') || 
+                              resultContainer.appendChild(document.createElement('div'));
+            
+            resultText.className = 'result-text';
+            resultText.textContent = message;
+            
+            resultContainer.className = `result-container result-${type}`;
+            
+            // Add animation effect
+            resultContainer.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                resultContainer.style.transform = 'scale(1)';
+            }, 100);
+        }
+
+        // Initialize the app
+        window.onload = function() {
+            loadInventoryFromDatabase();
+        };
+    </script>
+</body>
+</html>

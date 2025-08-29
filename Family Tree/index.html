@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Family Tree Builder — HTML + CSS + JS</title>
+<style>
+  :root{
+    --bg:#0f1220;
+    --panel:#151a2e;
+    --accent:#7c9cff;
+    --accent-2:#30c48d;
+    --danger:#ff6b6b;
+    --text:#e9ecff;
+    --muted:#9aa3c7;
+    --node:#1e2547;
+    --node-border:#2f3b76;
+    --edge:#7b86b8;
+    --spouse:#ffbd59;
+    --grid:#202647;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    display:grid;
+    grid-template-columns: 320px 1fr;
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      "header header"
+      "sidebar canvas";
+    background: radial-gradient(1200px 800px at 70% -200px, #1b2041 0%, var(--bg) 60%);
+    color:var(--text);
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
+  }
+  header{
+    grid-area: header;
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:12px 16px;
+    border-bottom:1px solid #20264a;
+    background:#0f1329cc;
+    backdrop-filter: blur(6px);
+    position:sticky; top:0; z-index:10;
+  }
+  header h1{
+    margin:0; font-size:18px; font-weight:700; letter-spacing:.3px;
+  }
+  header .actions{margin-left:auto; display:flex; gap:8px; flex-wrap:wrap}
+  button, select, input[type="text"]{
+    background:var(--panel);
+    color:var(--text);
+    border:1px solid #262d57;
+    border-radius:10px;
+    padding:8px 12px;
+    font-size:14px;
+    outline:none;
+  }
+  button{
+    background: linear-gradient(180deg,#2b346e,#202755);
+    border:1px solid #3e4aa3;
+    box-shadow: 0 0 0 1px #1a1f42 inset, 0 6px 14px #0006;
+    cursor:pointer;
+  }
+  button.secondary{background:#1b2041; border-color:#2c356a}
+  button.danger{background: linear-gradient(180deg,#6a2230,#4c1723); border-color:#a33548}
+  button:disabled{opacity:.55; cursor:not-allowed}
+  .sidebar{
+    grid-area: sidebar;
+    border-right:1px solid #20264a;
+    padding:14px 14px 100px;
+    overflow:auto;
+    background:linear-gradient(180deg,#0f132a 0%, #0f1220 100%);
+  }
+  .sidebar h2{font-size:13px; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); margin:18px 6px 8px}
+  .card{
+    background: #10152d;
+    border:1px solid #1b2250;
+    border-radius:14px;
+    padding:12px;
+    margin:8px 0;
+  }
+  .row{display:flex; gap:8px; margin:8px 0}
+  .row > *{flex:1}
+  .hint{font-size:12px; color:#a6afd9; margin-top:6px}
+  .list{
+    max-height:220px; overflow:auto; padding-right:2px;
+    border:1px dashed #2a3266; border-radius:10px;
+  }
+  .list-item{
+    display:flex; align-items:center; gap:8px;
+    padding:8px 10px; border-bottom:1px dashed #232a59;
+  }
+  .list-item:last-child{border-bottom:none}
+  .tag{
+    font-size:11px; padding:2px 6px; border-radius:999px; background:#27306d; color:#bfc7ff; border:1px solid #3b4797
+  }
+  .canvas-wrap{
+    grid-area: canvas;
+    position:relative;
+    overflow:hidden;
+  }
+  #viewport{
+    position:absolute; inset:0; overflow:auto;
+    background:
+      linear-gradient(#0000 0, #0000 29px, #20264766 30px),
+      linear-gradient(90deg, #0000 0, #0000 29px, #20264766 30px),
+      linear-gradient(#11163a, #0f1220);
+    background-size: 30px 30px, 30px 30px, cover;
+  }
+  svg{
+    position:absolute; top:0; left:0; /* size will be set by JS */
+    font-family:inherit;
+  }
+  .node{
+    cursor:grab;
+    filter: drop-shadow(0 8px 18px rgba(0,0,0,.35));
+  }
+  .node rect{
+    fill:var(--node);
+    stroke:var(--node-border);
+    stroke-width:1.2;
+  }
+  .node .name{
+    fill:var(--text); font-size:13px; font-weight:700;
+  }
+  .node .meta{
+    fill:#a9b2e2; font-size:11px;
+  }
+  .edge{
+    stroke:var(--edge); stroke-width:2.2; fill:none;
+  }
+  .edge.parent{ marker-end: url(#arrowHead); }
+  .edge.spouse{ stroke:var(--spouse); stroke-dasharray:6 4; }
+  .node.selected rect{
+    stroke:var(--accent);
+    stroke-width:2.4;
+    filter: drop-shadow(0 0 0 rgba(0,0,0,0));
+  }
+  .mini{
+    font-size:12px; color:#b9c3ff; margin-left:8px;
+  }
+  .foot{
+    position:fixed; bottom:10px; left:10px; right:10px; display:flex; gap:10px; align-items:center; justify-content:space-between; pointer-events:none;
+  }
+  .foot .bubble{
+    pointer-events:auto;
+    background:#0f1329cc; border:1px solid #283170; border-radius:12px; padding:8px 12px; color:#c3cbff;
+  }
+  .kbd{padding:.2em .5em; border-radius:6px; background:#1b2050; border:1px solid #2f3888; font-size:12px; color:#c8d0ff}
+  .credits{font-size:12px; opacity:.8}
+  .pill{
+    display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; background:#141a39; border:1px solid #2a347c; color:#c9d1ff;
+  }
+</style>
+</head>
+<body>
+  <header>
+    <span class="pill">🌳 Family Tree Builder</span>
+    <span class="mini">Drag nodes • Zoom with Ctrl + Wheel</span>
+    <div class="actions">
+      <button id="autoLayoutBtn" title="Auto layout the tree">Auto‑layout</button>
+      <button id="downloadBtn" title="Download PNG of the current tree">Download PNG</button>
+    </div>
+  </header>
+
+  <aside class="sidebar">
+    <div class="card">
+      <div class="row">
+        <input id="newName" type="text" placeholder="Person name" />
+        <select id="newGender" title="Gender">
+          <option value="u">—</option>
+          <option value="f">Female</option>
+          <option value="m">Male</option>
+          <option value="n">Non‑binary</option>
+        </select>
+      </div>
+      <div class="row">
+        <button id="addRootBtn">Add as Root</button>
+        <button id="addChildBtn" class="secondary" title="Adds child to the selected person">Add Child</button>
+      </div>
+      <div class="hint">Tip: Click a node to select it. “Add Child” adds a new branch under the selected person. ❗</div>
+    </div>
+
+    <div class="card">
+      <h2>Relationships</h2>
+      <div class="row">
+        <select id="spouseA"></select>
+        <span style="align-self:center">❤️</span>
+        <select id="spouseB"></select>
+      </div>
+      <div class="row">
+        <button id="addSpouseBtn">Add Spouse Link</button>
+        <button id="removeSpouseBtn" class="secondary">Remove Spouse Link</button>
+      </div>
+      <div class="hint">Spouse links are drawn as dashed golden lines.</div>
+    </div>
+
+    <div class="card">
+      <h2>Selection</h2>
+      <div id="selectedView" class="hint">No person selected.</div>
+      <div class="row">
+        <input id="renameInput" type="text" placeholder="Rename selected…" />
+        <button id="renameBtn" class="secondary">Rename</button>
+      </div>
+      <div class="row">
+        <button id="removeBranchBtn" class="danger" title="Remove selected person and all their descendants">Remove Branch</button>
+        <button id="centerOnBtn" class="secondary">Center on Selected</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>People</h2>
+      <div class="list" id="peopleList"></div>
+    </div>
+  </aside>
+
+  <div class="canvas-wrap">
+    <div id="viewport">
+      <svg id="svg" width="1800" height="1200" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrowHead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="var(--edge)"/>
+          </marker>
+        </defs>
+        <!-- Edges -->
+        <g id="edges"></g>
+        <!-- Nodes -->
+        <g id="nodes"></g>
+      </svg>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div class="bubble">🔍 Zoom: <span class="kbd">Ctrl</span> + Wheel &nbsp;•&nbsp; 🖱️ Drag nodes to arrange</div>
+    <div class="bubble credits">Built with vanilla HTML + CSS + JS 🔨🤖🔧</div>
+  </div>
+
+<script>
+(function(){
+  // ======== Data Model ========
+  /**
+   * Node schema:
+   * { id: string, name: string, gender:'m'|'f'|'n'|'u', x:number, y:number, parents:Set<id> }
+   * Relationships:
+   * parent-child edges are implied via 'parents' on child nodes
+   * spouse links stored as Set of 'a|b' normalized keys
+   */
+  const state = {
+    nodes: /** @type {Record<string, any>} */ ({}),
+    order: /** maintain insertion order for stable layout */ [],
+    spouses: new Set(), // keys: "minId|maxId"
+    selectedId: null,
+    zoom: 1,
+    panX: 40,
+    panY: 40,
+  };
+
+  const svg = document.getElementById('svg');
+  const edgesLayer = document.getElementById('edges');
+  const nodesLayer = document.getElementById('nodes');
+  const viewport = document.getElementById('viewport');
+
+  // ======== Utils ========
+  const uid = () => 'n' + Math.random().toString(36).slice(2, 9);
+  const spouseKey = (a,b)=> a<b ? (a+'|'+b) : (b+'|'+a);
+  const clamp = (v,min,max)=> Math.max(min, Math.min(max,v));
+  const getChildrenOf = (id)=>{
+    const out=[];
+    for(const nid of state.order){
+      const n = state.nodes[nid];
+      if(n.parents.has(id)) out.push(n);
+    }
+    return out;
+  };
+  const getParentsOf = (id)=>{
+    const n = state.nodes[id]; if(!n) return [];
+    return [...n.parents].map(pid=>state.nodes[pid]).filter(Boolean);
+  };
+  const rootCandidates = ()=>{
+    // people who have 0 parents
+    return state.order.filter(id => state.nodes[id].parents.size===0);
+  };
+  const ensureUniqueName = (name)=>{
+    let base = name.trim() || 'Unnamed';
+    let candidate = base; let i=2;
+    const exists = (n)=> Object.values(state.nodes).some(p=>p.name.toLowerCase()===n.toLowerCase());
+    while(exists(candidate)){ candidate = `${base} ${i++}`; }
+    return candidate;
+  };
+
+  // ======== Rendering ========
+  const NODE_W = 140, NODE_H = 56, GAP_X = 36, GAP_Y = 110;
+
+  function sizeSVGToContent(pad=200){
+    // compute bounds
+    const xs = state.order.map(id=>state.nodes[id].x);
+    const ys = state.order.map(id=>state.nodes[id].y);
+    const minX = Math.min(...xs, 0), minY = Math.min(...ys, 0);
+    const maxX = Math.max(...xs.map(x => x+NODE_W), 800);
+    const maxY = Math.max(...ys.map(y => y+NODE_H), 600);
+    const w = maxX - minX + pad;
+    const h = maxY - minY + pad;
+    svg.setAttribute('width', Math.ceil(w));
+    svg.setAttribute('height', Math.ceil(h));
+  }
+
+  function render(){
+    // Clear layers
+    edgesLayer.innerHTML = '';
+    nodesLayer.innerHTML = '';
+
+    // Draw parent-child edges
+    for(const id of state.order){
+      const child = state.nodes[id];
+      for(const pid of child.parents){
+        const parent = state.nodes[pid];
+        if(!parent) continue;
+        const {x:px, y:py} = parent;
+        const {x:cx, y:cy} = child;
+        // From bottom center of parent to top center of child
+        const x1 = px + NODE_W/2, y1 = py + NODE_H;
+        const x2 = cx + NODE_W/2, y2 = cy;
+        const mx = x1 + (x2-x1)/2;
+        const d = `M ${x1} ${y1} C ${mx} ${y1+30}, ${mx} ${y2-30}, ${x2} ${y2}`;
+        const line = el('path', {class:'edge parent', d});
+        edgesLayer.appendChild(line);
+      }
+    }
+    // Draw spouse links
+    for(const key of state.spouses){
+      const [a,b] = key.split('|');
+      const A = state.nodes[a], B = state.nodes[b];
+      if(!A || !B) continue;
+      const ax = A.x + NODE_W, ay = A.y + NODE_H/2;
+      const bx = B.x, by = B.y + NODE_H/2;
+      const ymid = (ay+by)/2;
+      const d = `M ${ax} ${ay} C ${(ax+bx)/2} ${ay}, ${(ax+bx)/2} ${by}, ${bx} ${by}`;
+      const line = el('path', {class:'edge spouse', d});
+      edgesLayer.appendChild(line);
+    }
+
+    // Draw nodes
+    for(const id of state.order){
+      const n = state.nodes[id];
+      const g = el('g', {class:'node'+(state.selectedId===id?' selected':''), 'data-id':id, transform:`translate(${n.x} ${n.y})`});
+      const rect = el('rect', {rx:10, ry:10, width: NODE_W, height: NODE_H});
+      const name = el('text', {class:'name', x:12, y:22}, escapeText(n.name));
+      const meta = el('text', {class:'meta', x:12, y:40}, genderLabel(n.gender) + personMeta(id));
+      g.append(rect, name, meta);
+
+      addDragBehavior(g, id);
+
+      g.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        select(id);
+      });
+
+      nodesLayer.appendChild(g);
+    }
+
+    refreshUILists();
+    sizeSVGToContent();
+  }
+
+  function personMeta(id){
+    const kids = getChildrenOf(id).length;
+    const parents = getParentsOf(id).length;
+    const spouses = [...state.spouses].filter(k=>k.includes(id)).length;
+    return ` • ${kids} child${kids!==1?'ren':''} • ${parents} parent${parents!==1?'s':''} • ${spouses} spouse${spouses!==1?'s':''}`;
+  }
+
+  function genderLabel(g){
+    return g==='m'?'Male' : g==='f'?'Female' : g==='n'?'Non‑binary' : '—';
+  }
+
+  function el(tag, attrs={}, text){
+    const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    for(const k in attrs){ e.setAttribute(k, attrs[k]); }
+    if(text!=null){ e.textContent = text; }
+    return e;
+  }
+  const escapeText = (s)=> s;
+
+  // ======== Interaction ========
+  function select(id){
+    state.selectedId = id;
+    renderSelectionPanel();
+    render(); // updates highlight borders + meta counts
+  }
+
+  function renderSelectionPanel(){
+    const pane = document.getElementById('selectedView');
+    if(!state.selectedId){
+      pane.innerHTML = 'No person selected.';
+      return;
+    }
+    const n = state.nodes[state.selectedId];
+    const parents = getParentsOf(n.id).map(p=>p.name).join(', ') || '—';
+    const kids = getChildrenOf(n.id).map(c=>c.name).join(', ') || '—';
+    pane.innerHTML = `
+      <div><span class="tag">Selected</span> <strong>${n.name}</strong></div>
+      <div class="hint">Gender: ${genderLabel(n.gender)}</div>
+      <div class="hint">Parents: ${parents}</div>
+      <div class="hint">Children: ${kids}</div>
+    `;
+    document.getElementById('renameInput').value = n.name;
+  }
+
+  function refreshUILists(){
+    // People list
+    const list = document.getElementById('peopleList');
+    list.innerHTML = '';
+    for(const id of state.order){
+      const p = state.nodes[id];
+      const item = document.createElement('div');
+      item.className = 'list-item';
+      const btn = document.createElement('button');
+      btn.textContent = 'Select';
+      btn.className = 'secondary';
+      btn.onclick = ()=>select(id);
+      const span = document.createElement('div');
+      span.style.flex='1';
+      span.innerHTML = `<strong>${p.name}</strong><div class="hint">id: ${id}</div>`;
+      const tag = document.createElement('span');
+      tag.className='tag'; tag.textContent = genderLabel(p.gender);
+      item.append(btn, span, tag);
+      list.appendChild(item);
+    }
+    // Relationship dropdowns
+    const fillSelect = (sel)=>{
+      sel.innerHTML = '';
+      for(const id of state.order){
+        const opt = document.createElement('option');
+        opt.value=id; opt.textContent = state.nodes[id].name;
+        sel.appendChild(opt);
+      }
+    };
+    fillSelect(document.getElementById('spouseA'));
+    fillSelect(document.getElementById('spouseB'));
+  }
+
+  // Dragging nodes
+  function addDragBehavior(g, id){
+    let dragging=false, sx=0, sy=0, startX=0, startY=0;
+    const onDown = (e)=>{
+      dragging = true; g.style.cursor='grabbing';
+      const pt = getMouse(e);
+      sx = pt.x; sy = pt.y;
+      startX = state.nodes[id].x; startY = state.nodes[id].y;
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp, {once:true});
+    };
+    const onMove = (e)=>{
+      if(!dragging) return;
+      const pt = getMouse(e);
+      const dx = (pt.x - sx), dy = (pt.y - sy);
+      state.nodes[id].x = startX + dx;
+      state.nodes[id].y = startY + dy;
+      render();
+    };
+    const onUp = ()=>{
+      dragging=false; g.style.cursor='grab';
+      window.removeEventListener('mousemove', onMove);
+    };
+    g.addEventListener('mousedown', onDown);
+  }
+
+  function getMouse(e){
+    // Convert page coords to SVG coords
+    const rect = svg.getBoundingClientRect();
+    const x = (e.clientX - rect.left);
+    const y = (e.clientY - rect.top);
+    return {x,y};
+  }
+
+  // Click to clear selection
+  viewport.addEventListener('click', (e)=>{
+    if(e.target === viewport){ state.selectedId=null; renderSelectionPanel(); render(); }
+  });
+
+  // Zoom (Ctrl + Wheel)
+  viewport.addEventListener('wheel', (e)=>{
+    if(!e.ctrlKey) return;
+    e.preventDefault();
+    const delta = Math.sign(e.deltaY);
+    const factor = delta>0 ? 0.9 : 1.1;
+    state.zoom = clamp(state.zoom*factor, 0.3, 2.2);
+    svg.style.transformOrigin = '0 0';
+    svg.style.transform = `translate(${state.panX}px, ${state.panY}px) scale(${state.zoom})`;
+  }, {passive:false});
+
+  // ======== Commands ========
+  const newNameEl = document.getElementById('newName');
+  const newGenderEl = document.getElementById('newGender');
+
+  document.getElementById('addRootBtn').addEventListener('click', ()=>{
+    const name = ensureUniqueName(newNameEl.value || 'Root');
+    const gender = newGenderEl.value;
+    const id = addPerson(name, gender, 40 + state.order.length*30, 40);
+    state.selectedId = id;
+    render();
+  });
+
+  document.getElementById('addChildBtn').addEventListener('click', ()=>{
+    if(!state.selectedId){ alert('Select a person first to add a child.'); return; }
+    const parent = state.nodes[state.selectedId];
+    const name = ensureUniqueName(newNameEl.value || `${parent.name}'s child`);
+    const gender = newGenderEl.value;
+    const id = addPerson(name, gender, parent.x, parent.y + GAP_Y);
+    // set parent-child
+    state.nodes[id].parents.add(parent.id);
+    // Try to also include the parent's spouse (if only one) as co-parent
+    const spouse = firstSpouseOf(parent.id);
+    if(spouse) state.nodes[id].parents.add(spouse);
+    state.selectedId = id;
+    autoLayout(); // keep tree tidy when adding kids
+    render();
+  });
+
+  document.getElementById('renameBtn').addEventListener('click', ()=>{
+    if(!state.selectedId) return;
+    const val = document.getElementById('renameInput').value.trim();
+    if(!val) return;
+    state.nodes[state.selectedId].name = val;
+    render();
+  });
+
+  document.getElementById('removeBranchBtn').addEventListener('click', ()=>{
+    const id = state.selectedId;
+    if(!id){ alert('Select a person to remove.'); return; }
+    if(!confirm('Remove this person and ALL of their descendants?')) return;
+    removeBranch(id);
+    state.selectedId = null;
+    render();
+  });
+
+  function firstSpouseOf(id){
+    for(const k of state.spouses){
+      const [a,b]=k.split('|');
+      if(a===id) return b;
+      if(b===id) return a;
+    }
+    return null;
+  }
+
+  document.getElementById('addSpouseBtn').addEventListener('click', ()=>{
+    const a = document.getElementById('spouseA').value;
+    const b = document.getElementById('spouseB').value;
+    if(!a || !b || a===b){ alert('Choose two different people.'); return; }
+    const key = spouseKey(a,b);
+    state.spouses.add(key);
+    render();
+  });
+
+  document.getElementById('removeSpouseBtn').addEventListener('click', ()=>{
+    const a = document.getElementById('spouseA').value;
+    const b = document.getElementById('spouseB').value;
+    const key = spouseKey(a,b);
+    if(state.spouses.has(key)){ state.spouses.delete(key); render(); }
+  });
+
+  document.getElementById('centerOnBtn').addEventListener('click', ()=>{
+    if(!state.selectedId) return;
+    const n = state.nodes[state.selectedId];
+    // center selected roughly in view by panning the svg transform
+    const rect = viewport.getBoundingClientRect();
+    state.panX = Math.max(10, rect.width/2 - (n.x + NODE_W/2)*state.zoom);
+    state.panY = Math.max(10, rect.height/2 - (n.y + NODE_H/2)*state.zoom);
+    svg.style.transform = `translate(${state.panX}px, ${state.panY}px) scale(${state.zoom})`;
+  });
+
+  document.getElementById('autoLayoutBtn').addEventListener('click', ()=>{
+    autoLayout(); render();
+  });
+
+  document.getElementById('downloadBtn').addEventListener('click', downloadPNG);
+
+  // ======== Core ops ========
+  function addPerson(name, gender='u', x=40, y=40){
+    const id = uid();
+    state.nodes[id] = { id, name, gender, x, y, parents: new Set() };
+    state.order.push(id);
+    return id;
+  }
+
+  function removeBranch(id){
+    const idsToRemove = new Set();
+    (function dfs(cur){
+      idsToRemove.add(cur);
+      for(const ch of getChildrenOf(cur)) dfs(ch.id);
+    })(id);
+
+    // remove nodes
+    state.order = state.order.filter(nid => !idsToRemove.has(nid));
+    for(const nid of idsToRemove) delete state.nodes[nid];
+
+    // remove spouse links involving any removed nodes
+    for(const k of [...state.spouses]){
+      const [a,b]=k.split('|');
+      if(idsToRemove.has(a) || idsToRemove.has(b)) state.spouses.delete(k);
+    }
+    // clean parent pointers on survivors
+    for(const nid of state.order){
+      const n = state.nodes[nid];
+      for(const r of idsToRemove){ n.parents.delete(r); }
+    }
+  }
+
+  // ======== Auto Layout (simple tidy tree) ========
+  /**
+   * We compute depths by BFS from each root (node with no parents),
+   * place each generation on a row, and spread siblings horizontally.
+   * Spouse pairs are nudged together.
+   */
+  function autoLayout(){
+    const roots = rootCandidates();
+    // compute depth (level) per BFS from each root
+    const level = /** @type {Record<string, number>} */ ({});
+    const byLevel = /** @type {Record<number, string[]>} */ ({});
+    const visited = new Set();
+    const q = [...roots];
+    for(const r of roots){ level[r]=0; }
+    while(q.length){
+      const cur = q.shift();
+      if(!cur) break;
+      visited.add(cur);
+      const lv = level[cur] ?? 0;
+      const children = getChildrenOf(cur).map(n=>n.id);
+      for(const ch of children){
+        // take min level if multiple parents
+        if(level[ch]==null || level[ch] > lv+1) level[ch] = lv+1;
+        if(!visited.has(ch)) q.push(ch);
+      }
+    }
+    // any disconnected nodes get level 0
+    for(const id of state.order){ if(level[id]==null) level[id]=0; }
+    // build byLevel buckets
+    for(const id of state.order){
+      const lv = level[id];
+      if(!byLevel[lv]) byLevel[lv]=[];
+      byLevel[lv].push(id);
+    }
+    // within each level, group by parent cluster to keep siblings close
+    const positions = /** @type {Record<string,{x:number,y:number}>} */ ({});
+    let cursorY = 40;
+    const colWidth = NODE_W + GAP_X;
+    for(const lv of Object.keys(byLevel).map(Number).sort((a,b)=>a-b)){
+      const ids = byLevel[lv];
+      // Simple ordering: keep existing order to preserve user's intent
+      // Compute x positions
+      let cursorX = 40;
+      for(const id of ids){
+        positions[id] = {x: cursorX, y: cursorY};
+        cursorX += colWidth;
+      }
+      cursorY += GAP_Y;
+    }
+    // Nudge spouse pairs to be near each other (average their x's)
+    for(const key of state.spouses){
+      const [a,b]=key.split('|');
+      if(!positions[a] || !positions[b]) continue;
+      const avg = (positions[a].x + positions[b].x)/2;
+      positions[a].x = avg - NODE_W*0.6;
+      positions[b].x = avg + NODE_W*0.6;
+    }
+    // Apply positions
+    for(const id of state.order){
+      state.nodes[id].x = positions[id].x;
+      state.nodes[id].y = positions[id].y;
+    }
+    // Expand SVG if needed
+    sizeSVGToContent();
+  }
+
+  // ======== Export to PNG ========
+  async function downloadPNG(){
+    // Ensure current size is correct
+    sizeSVGToContent(80);
+    // Serialize SVG
+    const serializer = new XMLSerializer();
+    const svgClone = svg.cloneNode(true);
+    // add inline styles for export (computed style for classes)
+    const style = document.createElement('style');
+    style.textContent = `
+      .edge{ stroke:${getCSS('--edge')}; }
+      .edge.spouse{ stroke:${getCSS('--spouse')}; }
+      .node rect{ fill:${getCSS('--node')}; stroke:${getCSS('--node-border')}; }
+      .node .name{ fill:${getCSS('--text')}; font: 700 13px ${getComputedStyle(document.body).fontFamily}; }
+      .node .meta{ fill:#a9b2e2; font: 11px ${getComputedStyle(document.body).fontFamily}; }
+    `;
+    svgClone.insertBefore(style, svgClone.firstChild);
+    const svgStr = serializer.serializeToString(svgClone);
+
+    const img = new Image();
+    const svgBlob = new Blob([svgStr], {type: 'image/svg+xml;charset=utf-8'});
+    const url = URL.createObjectURL(svgBlob);
+    await new Promise((res, rej)=>{
+      img.onload = ()=>{ res(); };
+      img.onerror = rej;
+      img.src = url;
+    });
+    const w = parseInt(svg.getAttribute('width')) || 1200;
+    const h = parseInt(svg.getAttribute('height')) || 800;
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    // background
+    ctx.fillStyle = '#0f1220';
+    ctx.fillRect(0,0,w,h);
+    ctx.drawImage(img, 0, 0);
+    URL.revokeObjectURL(url);
+
+    const png = canvas.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = png;
+    a.download = 'family-tree.png';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  function getCSS(varName){
+    return getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || '#fff';
+  }
+
+  // ======== Demo seed (optional for UX) ========
+  // Add a mini starter family so you see something right away
+  const idA = addPerson('Alex', 'm', 80, 40);
+  const idB = addPerson('Blake', 'f', 240, 40);
+  state.spouses.add(spouseKey(idA,idB));
+  const idC = addPerson('Casey', 'n', 160, 150); state.nodes[idC].parents.add(idA); state.nodes[idC].parents.add(idB);
+  const idD = addPerson('Drew', 'u', 20, 150); state.nodes[idD].parents.add(idA);
+  const idE = addPerson('Elliot', 'f', 300, 150); state.nodes[idE].parents.add(idB);
+  autoLayout();
+  select(idA);
+  render();
+
+  // ======== Keyboard niceties ========
+  document.addEventListener('keydown', (e)=>{
+    // Delete = remove branch
+    if((e.key==='Delete' || e.key==='Backspace') && state.selectedId){
+      e.preventDefault();
+      if(confirm(`Remove ${state.nodes[state.selectedId].name} and descendants?`)){
+        removeBranch(state.selectedId);
+        state.selectedId = null;
+        render();
+      }
+    }
+    // A = add child of selected
+    if(e.key.toLowerCase()==='a' && state.selectedId){
+      document.getElementById('addChildBtn').click();
+    }
+    // R = auto layout
+    if(e.key.toLowerCase()==='r'){
+      autoLayout(); render();
+    }
+  });
+
+})();
+</script>
+</body>
+</html>

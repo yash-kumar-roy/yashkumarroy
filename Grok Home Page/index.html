@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Grok-ish • Yash</title>
+  <meta name="description" content="A Grok-inspired landing page featuring Yash." />
+  <link rel="preload" as="style" href="styles.css" />
+  <link rel="stylesheet" href="styles.css" />
+  <!-- Tiny embedded favicon (purple dot) -->
+  <link rel="icon" type="image/svg+xml" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><circle cx="32" cy="32" r="20" fill="%237a5cff"/></svg>'/>
+</head>
+<body>
+  <!-- Background canvas: starfield -->
+  <canvas id="stars" aria-hidden="true"></canvas>
+
+  <header class="site-header">
+    <nav class="nav" aria-label="Primary">
+      <a class="brand" href="#" aria-label="Home">
+        <span class="brand-glyph" aria-hidden="true">▮</span>
+        <span class="brand-text">grok<span class="accent">/**</span></span>
+      </a>
+      <div class="spacer"></div>
+      <ul class="nav-links">
+        <li><a href="#" class="nav-link">Docs</a></li>
+        <li><a href="#" class="nav-link">Playground</a></li>
+        <li><a href="#" class="nav-link btn btn-outline">Sign in</a></li>
+        <li><a href="#" class="nav-link btn btn-solid">Get Grok</a></li>
+      </ul>
+      <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">
+        <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+      </button>
+    </nav>
+  </header>
+
+  <main class="hero" id="top">
+    <div class="hero-inner">
+      <p class="kicker" aria-live="polite">console:// boot</p>
+
+      <!-- The "Yash" line (typed via JS) -->
+      <h1 class="title">
+        <span class="cursor-wrap">
+          <span id="type-target" class="type-target" aria-label="Yash">Y</span>
+          <span class="cursor" aria-hidden="true"></span>
+        </span>
+      </h1>
+
+      <p class="subtitle">
+        An irreverent, real‑time AI with a sense of humor.<br />
+        <span class="muted">Grok‑ish demo page — handcrafted for <strong>Yash</strong>.</span>
+      </p>
+
+      <div class="cta-row">
+        <a class="btn btn-solid" href="#try">Try it</a>
+        <a class="btn btn-outline" href="#learn">Learn more</a>
+      </div>
+
+      <div class="terminal" role="region" aria-label="Boot log">
+        <div class="terminal-bar">
+          <span class="dot red"></span>
+          <span class="dot yellow"></span>
+          <span class="dot green"></span>
+          <span class="title">/var/log/grok</span>
+        </div>
+        <pre class="terminal-body" id="log" tabindex="0">
+[00:00:00] init ▸ starting services…
+[00:00:01] net  ▸ connected to ∿ cosmos
+[00:00:02] core ▸ humor engine: loaded
+[00:00:03] user ▸ hello, <span class="accent">Yash</span> 👋
+[00:00:04] tip  ▸ press <kbd>Space</kbd> to scramble the grid
+        </pre>
+      </div>
+    </div>
+  </main>
+
+  <section class="features" id="learn" aria-label="Highlights">
+    <div class="feature">
+      <div class="icon">⚡</div>
+      <h3>Fast, snarky, useful</h3>
+      <p>Latency low, wit high. Streams thoughts like a terminal — minus the typos.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">🧠</div>
+      <h3>Reasoning‑first</h3>
+      <p>Built to break problems into parts. Results you can actually ship.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">🛰️</div>
+      <h3>Real‑time aware</h3>
+      <p>Knows what’s happening now. Like a friend who actually reads the logs.</p>
+    </div>
+  </section>
+
+  <section class="panel" id="try" aria-label="Live preview">
+    <div class="panel-inner">
+      <h2>Try a prompt</h2>
+      <form class="prompt-row" autocomplete="off">
+        <label for="prompt" class="sr-only">Enter prompt</label>
+        <input id="prompt" name="prompt" type="text" placeholder="Ask anything…"
+               spellcheck="false" aria-describedby="promptHelp" />
+        <button class="btn btn-solid" type="submit">Run</button>
+      </form>
+      <p id="promptHelp" class="muted">Hint: type <code>/clear</code> to reset the output.</p>
+
+      <div class="output" role="log" aria-live="polite" aria-atomic="false">
+        <div class="output-inner" id="outputInner"></div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <p>© <span id="year"></span> Grok‑ish Demo • Built for <strong>Yash</strong>. Not affiliated with xAI.</p>
+  </footer>
+
+  <script src="script.js" defer></script>
+</body>
+</html>

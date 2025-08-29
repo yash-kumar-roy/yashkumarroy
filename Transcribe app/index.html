@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TranscribeIt — Single‑Page Video Transcriber</title>
+  <style>
+    :root {
+      --bg: #0b0f14;
+      --panel: #121820;
+      --accent: #64b5f6;
+      --text: #e6eef7;
+      --muted: #98a6b3;
+      --danger: #ff6b6b;
+      --ok: #65f2a1;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1200px 800px at 20% -10%, #0d1624, var(--bg)), var(--bg);
+      color: var(--text); line-height: 1.5;
+    }
+    .wrap { max-width: 1100px; margin: 40px auto; padding: 24px; }
+    .title { font-size: 28px; font-weight: 800; letter-spacing: 0.2px; margin: 0 0 8px; }
+    .sub { color: var(--muted); margin: 0 0 24px; }
+    .panel { background: linear-gradient(180deg, #121820, #0e141c); border: 1px solid #1f2a38; border-radius: 16px; padding: 18px; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+    .grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
+    @media (min-width: 900px) { .grid { grid-template-columns: 1.4fr 1fr; } }
+    label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 6px; }
+    input[type="text"], input[type="file"], select, textarea { width: 100%; color: var(--text); background: #0c1219; border: 1px solid #213043; border-radius: 12px; padding: 10px 12px; outline: none; }
+    textarea { min-height: 240px; resize: vertical; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .btns { display: flex; gap: 10px; flex-wrap: wrap; }
+    button { cursor: pointer; border: 1px solid #2a3a52; background: #0e1621; color: var(--text); padding: 10px 14px; border-radius: 12px; font-weight: 600; }
+    button.primary { background: linear-gradient(180deg, #1c2a3e, #142033); border-color: #2a3a52; }
+    button.accent { background: linear-gradient(180deg, #3292ff, #1f6ed1); border-color: #2b7ce0; color: #fff; }
+    button.ghost { background: transparent; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .hint { color: var(--muted); font-size: 12px; }
+    .status { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 12px; color: var(--muted); }
+    .status strong { color: var(--text); }
+    .badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 6px 10px; border-radius: 999px; border: 1px solid #2a3a52; background: #0c131c; }
+    .badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+    .badge.ok .dot { background: var(--ok); }
+    .badge.err .dot { background: var(--danger); }
+    .muted-box { background: #0b121a; border: 1px dashed #253143; border-radius: 10px; padding: 10px; color: var(--muted); font-size: 13px; }
+    .footer { margin-top: 24px; color: var(--muted); font-size: 12px; text-align: center; }
+    .sep { height: 1px; background: #1d2837; margin: 12px 0; border-radius: 1px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1 class="title">TranscribeIt</h1>
+    <p class="sub">Single‑page app to transcribe videos. Paste a link <em>(if CORS/downloadable)</em> or upload a video/audio file. View and download as PDF — all on this page.</p>
+
+    <div class="grid">
+      <!-- LEFT: Controls -->
+      <div class="panel">
+        <div class="row">
+          <div>
+            <label for="sourceSelect">Source</label>
+            <select id="sourceSelect">
+              <option value="upload">Upload file (local, on‑device)</option>
+              <option value="url">From URL (attempt direct fetch)</option>
+            </select>
+          </div>
+          <div>
+            <label for="engineSelect">Engine</label>
+            <select id="engineSelect">
+              <option value="local">Local Whisper (browser)</option>
+              <option value="assemblyai">AssemblyAI API</option>
+              <option value="deepgram">Deepgram API</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="uploadBlock">
+          <label for="fileInput">Upload audio/video</label>
+          <input id="fileInput" type="file" accept="audio/*,video/*" />
+          <div class="hint">Large files are okay, but local engine will be slower for long videos. Start with a short clip to test.</div>
+        </div>
+
+        <div id="urlBlock" style="display:none;">
+          <label for="urlInput">Video/Audio URL</label>
+          <input id="urlInput" type="text" placeholder="https://... (mp4, mp3, wav). Some social links block direct access." />
+          <div class="hint">Direct media URLs work best. Many YouTube/Instagram/Twitter/Reddit/Facebook links require a server helper due to CORS/ToS.</div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label for="langSelect">Language (local engine)</label>
+            <select id="langSelect">
+              <option value="auto" selected>Auto‑detect</option>
+              <option value="en">English</option>
+              <option value="hi">Hindi</option>
+              <option value="es">Spanish</option>
+              <option value="fr">French</option>
+              <option value="de">German</option>
+              <option value="ja">Japanese</option>
+              <option value="zh">Chinese</option>
+            </select>
+          </div>
+          <div>
+            <label for="qualitySelect">Quality</label>
+            <select id="qualitySelect">
+              <option value="tiny" selected>Tiny (fastest, ~75MB)</option>
+              <option value="base">Base (~142MB)</option>
+              <option value="small">Small (~466MB)</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="apiBlock" class="muted-box" style="display:none;">
+          <div class="row">
+            <div>
+              <label for="apiKey">API Key</label>
+              <input id="apiKey" type="text" placeholder="Paste your API key (stored locally)" />
+            </div>
+            <div>
+              <label for="modelSelect">API Model (if applicable)</label>
+              <input id="modelSelect" type="text" placeholder="e.g., general, nova-2, whisper-1" />
+            </div>
+          </div>
+          <div class="hint">Your key is kept in your browser's localStorage. For production, use a server‑side proxy to protect secrets.</div>
+        </div>
+
+        <div class="sep"></div>
+        <div class="btns">
+          <button id="transcribeBtn" class="accent">▶ Transcribe</button>
+          <button id="cancelBtn" class="ghost">✖ Cancel</button>
+          <button id="clearBtn" class="ghost">🧹 Clear</button>
+        </div>
+        <p class="status" id="status"><span class="badge"><span class="dot"></span> Idle</span></p>
+        <div class="hint">Tip: For social links that don't download, use a server helper (e.g., a tiny Cloudflare Worker that resolves media + sets CORS) or supply a direct media URL.</div>
+      </div>
+
+      <!-- RIGHT: Output -->
+      <div class="panel">
+        <label for="output">Transcript</label>
+        <textarea id="output" placeholder="Your transcript will appear here..."></textarea>
+        <div class="btns" style="margin-top:8px;">
+          <button id="copyBtn" class="primary">Copy</button>
+          <button id="downloadTxtBtn" class="primary">Download .txt</button>
+          <button id="downloadPdfBtn" class="primary">Download .pdf</button>
+        </div>
+      </div>
+    </div>
+
+    <p class="footer">Made with ❤️ — runs entirely in your browser for local mode. APIs are optional. No data leaves your device unless you choose an API provider.</p>
+  </div>
+
+  <!-- External libs -->
+  <script src="https://cdn.jsdelivr.net/npm/@xenova/transformers/dist/transformers.min.js"></script>
+  <script>
+    // Globals
+    let cancelRequested = false;
+    let transcriber = null; // transformers.js pipeline
+    let currentEngine = 'local';
+
+    const el = (id) => document.getElementById(id);
+    const statusEl = el('status');
+
+    const enginesRequiringAPI = new Set(['assemblyai', 'deepgram']);
+
+    // UI wiring
+    el('engineSelect').addEventListener('change', (e) => {
+      currentEngine = e.target.value;
+      const needsAPI = enginesRequiringAPI.has(currentEngine);
+      el('apiBlock').style.display = needsAPI ? 'block' : 'none';
+      el('langSelect').disabled = !['local'].includes(currentEngine);
+      el('qualitySelect').disabled = !['local'].includes(currentEngine);
+      savePrefs();
+    });
+
+    el('sourceSelect').addEventListener('change', (e) => {
+      const mode = e.target.value;
+      el('uploadBlock').style.display = mode === 'upload' ? 'block' : 'none';
+      el('urlBlock').style.display = mode === 'url' ? 'block' : 'none';
+      savePrefs();
+    });
+
+    el('transcribeBtn').addEventListener('click', () => startTranscription());
+    el('cancelBtn').addEventListener('click', () => { cancelRequested = true; setStatus('Cancelling...', 'err'); });
+    el('clearBtn').addEventListener('click', () => { el('output').value = ''; setStatus('Cleared. Ready.', ''); });
+    el('copyBtn').addEventListener('click', () => { navigator.clipboard.writeText(el('output').value || ''); setStatus('Copied to clipboard', 'ok'); });
+    el('downloadTxtBtn').addEventListener('click', () => downloadText('transcript.txt', el('output').value || ''));
+    el('downloadPdfBtn').addEventListener('click', () => downloadPDF('transcript.pdf', el('output').value || ''));
+
+    // Persist simple prefs
+    function savePrefs() {
+      const prefs = {
+        engine: el('engineSelect').value,
+        source: el('sourceSelect').value,
+        lang: el('langSelect').value,
+        quality: el('qualitySelect').value,
+        apiKey: el('apiKey').value,
+        apiModel: el('modelSelect').value,
+      };
+      localStorage.setItem('transcribeit:prefs', JSON.stringify(prefs));
+    }
+    function loadPrefs() {
+      const prefs = JSON.parse(localStorage.getItem('transcribeit:prefs') || '{}');
+      if (prefs.engine) el('engineSelect').value = prefs.engine;
+      if (prefs.source) el('sourceSelect').value = prefs.source;
+      if (prefs.lang) el('langSelect').value = prefs.lang;
+      if (prefs.quality) el('qualitySelect').value = prefs.quality;
+      if (prefs.apiKey) el('apiKey').value = prefs.apiKey;
+      if (prefs.apiModel) el('modelSelect').value = prefs.apiModel;
+      // trigger visibility
+      el('engineSelect').dispatchEvent(new Event('change'));
+      el('sourceSelect').dispatchEvent(new Event('change'));
+    }
+    loadPrefs();
+
+    function setStatus(message, kind = '') {
+      const cls = kind === 'ok' ? 'badge ok' : kind === 'err' ? 'badge err' : 'badge';
+      statusEl.innerHTML = `<span class="${cls}"><span class="dot"></span> ${escapeHtml(message)}</span>`;
+    }
+
+    function escapeHtml(str){
+      return (str||'').replace(/[&<>"]+/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]));
+    }
+
+    async function startTranscription() {
+      try {
+        cancelRequested = false;
+        const engine = el('engineSelect').value;
+        const source = el('sourceSelect').value;
+
+        if (engine === 'local') {
+          if (source === 'upload') {
+            const file = el('fileInput').files?.[0];
+            if (!file) return setStatus('Please choose a file to transcribe.', 'err');
+            await transcribeLocalFile(file);
+          } else {
+            const url = (el('urlInput').value || '').trim();
+            if (!url) return setStatus('Please paste a media URL.', 'err');
+            await transcribeLocalFromUrl(url);
+          }
+        } else if (engine === 'assemblyai') {
+          const apiKey = (el('apiKey').value || '').trim();
+          if (!apiKey) return setStatus('AssemblyAI key required.', 'err');
+          const url = source === 'upload' ? await blobUrlFromFile(el('fileInput').files?.[0]) : (el('urlInput').value || '').trim();
+          if (!url) return setStatus('Provide a file or URL.', 'err');
+          await transcribeWithAssemblyAI(apiKey, url, el('modelSelect').value || undefined);
+        } else if (engine === 'deepgram') {
+          const apiKey = (el('apiKey').value || '').trim();
+          if (!apiKey) return setStatus('Deepgram key required.', 'err');
+          if (source === 'upload') {
+            const file = el('fileInput').files?.[0];
+            if (!file) return setStatus('Choose a file.', 'err');
+            await transcribeWithDeepgramUpload(apiKey, file, el('modelSelect').value || undefined);
+          } else {
+            const url = (el('urlInput').value || '').trim();
+            if (!url) return setStatus('Paste a media URL.', 'err');
+            await transcribeWithDeepgramUrl(apiKey, url, el('modelSelect').value || undefined);
+          }
+        }
+      } catch (err) {
+        console.error(err);
+        setStatus('Error: ' + (err?.message || err), 'err');
+      }
+    }
+
+    // ---------- LOCAL (Transformers.js Whisper) ----------
+    async function ensureLocalModelLoaded() {
+      if (transcriber) return transcriber;
+      const quality = el('qualitySelect').value; // tiny|base|small
+      const lang = el('langSelect').value;
+      const modelMap = {
+        tiny: lang === 'en' ? 'Xenova/whisper-tiny.en' : 'Xenova/whisper-tiny',
+        base: lang === 'en' ? 'Xenova/whisper-base.en' : 'Xenova/whisper-base',
+        small: lang === 'en' ? 'Xenova/whisper-small.en' : 'Xenova/whisper-small',
+      };
+      const model = modelMap[quality];
+      setStatus(`Loading local model: ${model} (first load may take a while) ...`);
+      // use WebGPU/WebGL if available
+      const { pipeline, env } = window.transformers;
+      env.allowLocalModels = false; // fetch from CDN
+      env.useBrowserCache = true;   // cache in IndexedDB
+      transcriber = await pipeline('automatic-speech-recognition', model);
+      setStatus('Model ready ✓', 'ok');
+      return transcriber;
+    }
+
+    async function transcribeLocalFile(file) {
+      setStatus('Preparing audio...');
+      const arrayBuf = await file.arrayBuffer();
+      const audio = await decodeAndResample(arrayBuf, 16000);
+      await runLocalASR(audio);
+    }
+
+    async function transcribeLocalFromUrl(url) {
+      setStatus('Fetching media (CORS must be allowed)...');
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to fetch media. Many sites block cross-origin download.');
+      const arrayBuf = await res.arrayBuffer();
+      const audio = await decodeAndResample(arrayBuf, 16000);
+      await runLocalASR(audio);
+    }
+
+    async function runLocalASR(float32Audio, sampleRate = 16000) {
+      const pipe = await ensureLocalModelLoaded();
+      setStatus('Transcribing locally...');
+      const t0 = performance.now();
+      const out = await pipe(
+        { array: float32Audio, sampling_rate: sampleRate },
+        {
+          chunk_length_s: 25,
+          stride_length_s: 5,
+          return_timestamps: false,
+          task: 'transcribe',
+          language: el('langSelect').value === 'auto' ? undefined : el('langSelect').value,
+        }
+      );
+      const t1 = performance.now();
+      el('output').value = (out?.text || '').trim();
+      setStatus(`Done in ${(t1 - t0).toFixed(0)} ms (local)`, 'ok');
+    }
+
+    async function decodeAndResample(arrayBuffer, targetRate = 16000) {
+      // Decode via WebAudio, then resample using OfflineAudioContext for high quality
+      const actx = new (window.AudioContext || window.webkitAudioContext)();
+      const audioBuffer = await actx.decodeAudioData(arrayBuffer.slice(0));
+      const offline = new OfflineAudioContext(1, Math.ceil(audioBuffer.duration * targetRate), targetRate);
+      const src = offline.createBufferSource();
+      // mixdown to mono
+      const mono = offline.createGain();
+      const chs = audioBuffer.numberOfChannels;
+      const merger = offline.createChannelMerger(1);
+      // Create a mono buffer by averaging channels
+      const monoBuf = offline.createBuffer(1, audioBuffer.length, audioBuffer.sampleRate);
+      const monoData = monoBuf.getChannelData(0);
+      for (let c = 0; c < chs; c++) {
+        const chData = audioBuffer.getChannelData(c);
+        for (let i = 0; i < chData.length; i++) monoData[i] += chData[i] / chs;
+      }
+      src.buffer = monoBuf;
+      src.connect(merger);
+      merger.connect(mono);
+      mono.connect(offline.destination);
+      src.start();
+      const resampled = await offline.startRendering();
+      return resampled.getChannelData(0);
+    }
+
+    // ---------- AssemblyAI ----------
+    async function transcribeWithAssemblyAI(apiKey, mediaUrl, model) {
+      setStatus('Submitting to AssemblyAI...');
+      // Docs: POST /v2/transcript with { audio_url }
+      const createRes = await fetch('https://api.assemblyai.com/v2/transcript', {
+        method: 'POST',
+        headers: {
+          'authorization': apiKey,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ audio_url: mediaUrl, language_detection: true, speaker_labels: false, punctuate: true, format_text: true, speech_model: model || undefined })
+      });
+      if (!createRes.ok) throw new Error('Create transcript failed. Check key, CORS, or URL accessibility.');
+      const task = await createRes.json();
+      const id = task.id;
+      setStatus('Queued. Polling status...');
+      let attempts = 0;
+      while (!cancelRequested) {
+        await sleep(1500);
+        attempts++;
+        const poll = await fetch(`https://api.assemblyai.com/v2/transcript/${id}`, {
+          headers: { 'authorization': apiKey }
+        });
+        if (!poll.ok) throw new Error('Polling failed (network/CORS).');
+        const data = await poll.json();
+        if (data.status === 'completed') {
+          el('output').value = data.text || '';
+          setStatus('Completed via AssemblyAI ✓', 'ok');
+          return;
+        } else if (data.status === 'error') {
+          throw new Error(data.error || 'AssemblyAI error');
+        } else {
+          setStatus(`Processing: ${data.status} (t≈${(attempts*1.5).toFixed(0)}s)`);
+        }
+      }
+      if (cancelRequested) setStatus('Cancelled.', 'err');
+    }
+
+    // ---------- Deepgram ----------
+    async function transcribeWithDeepgramUrl(apiKey, mediaUrl, model) {
+      setStatus('Submitting URL to Deepgram...');
+      const params = new URLSearchParams({ smart_format: 'true', model: model || 'nova-2' });
+      const res = await fetch(`https://api.deepgram.com/v1/listen?${params}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Token ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: mediaUrl })
+      });
+      if (!res.ok) throw new Error('Deepgram URL transcription failed.');
+      const data = await res.json();
+      const text = (data?.results?.channels?.[0]?.alternatives?.[0]?.paragraphs?.transcript) || (data?.results?.channels?.[0]?.alternatives?.[0]?.transcript) || '';
+      el('output').value = text;
+      setStatus('Completed via Deepgram ✓', 'ok');
+    }
+
+    async function transcribeWithDeepgramUpload(apiKey, file, model) {
+      setStatus('Uploading to Deepgram...');
+      const res = await fetch(`https://api.deepgram.com/v1/listen?smart_format=true&model=${encodeURIComponent(model||'nova-2')}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Token ${apiKey}`, 'Content-Type': file.type || 'application/octet-stream' },
+        body: file
+      });
+      if (!res.ok) throw new Error('Deepgram upload transcription failed.');
+      const data = await res.json();
+      const text = (data?.results?.channels?.[0]?.alternatives?.[0]?.paragraphs?.transcript) || (data?.results?.channels?.[0]?.alternatives?.[0]?.transcript) || '';
+      el('output').value = text;
+      setStatus('Completed via Deepgram ✓', 'ok');
+    }
+
+    // ---------- Helpers ----------
+    function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+    function downloadText(filename, text) {
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename; a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    async function blobUrlFromFile(file) {
+      if (!file) return null;
+      // For APIs that accept a URL only: we create a temporary object URL. Many APIs cannot fetch blob: URLs.
+      // This is mostly a placeholder. Prefer upload endpoints when available.
+      return new Promise((resolve) => {
+        const u = URL.createObjectURL(file);
+        resolve(u);
+      });
+    }
+
+    async function downloadPDF(filename, text) {
+      // Lazy-load jsPDF only when needed
+      if (!window.jspdf) {
+        await new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
+          s.onload = resolve; s.onerror = reject; document.body.appendChild(s);
+        });
+      }
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+      const margin = 40; const maxWidth = 515; const lineHeight = 16; const fontSize = 12;
+      doc.setFont('Times', 'Normal');
+      doc.setFontSize(14);
+      doc.text('Transcript', margin, margin);
+      doc.setFontSize(fontSize);
+      const lines = doc.splitTextToSize(text || '', maxWidth);
+      let cursorY = margin + 20;
+      for (const line of lines) {
+        if (cursorY > 800) { doc.addPage(); cursorY = margin; }
+        doc.text(line, margin, cursorY);
+        cursorY += lineHeight;
+      }
+      doc.save(filename);
+      setStatus('PDF downloaded ✓', 'ok');
+    }
+  </script>
+</body>
+</html>
