@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Typing Game</title>
+  <style>
+    :root {
+      --bg: #0b1021;
+      --fg: #e6f1ff;
+      --accent: #7dd3fc;
+      --accent-2: #a78bfa;
+      --danger: #f87171;
+      --ok: #34d399;
+      --glass: rgba(255,255,255,0.06);
+      --panel: rgba(255,255,255,0.10);
+    }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: radial-gradient(1000px 800px at 70% -10%, #121b3a, var(--bg));
+      color: var(--fg);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Ubuntu, Cantarell, Noto Sans, Arial, sans-serif;
+      overflow: hidden;
+    }
+
+    #game {
+      position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; cursor: none;
+    }
+
+    .hud { position: fixed; inset: 0; pointer-events: none; display: grid; grid-template-rows: auto 1fr auto; }
+    .topbar { display: flex; gap: 16px; align-items: center; justify-content: space-between; padding: 14px 18px; background: linear-gradient(to bottom, rgba(0,0,0,0.35), rgba(0,0,0,0)); backdrop-filter: blur(6px); }
+    .stat { display: inline-flex; align-items: center; gap: 10px; background: var(--glass); border: 1px solid rgba(255,255,255,0.14); border-radius: 999px; padding: 8px 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.25) inset; font-weight: 600; }
+    .hpbar { --w: 220px; width: var(--w); height: 10px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; border: 1px solid rgba(255,255,255,0.14); }
+    .hpbar > i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, var(--ok), #22c55e); transition: width 120ms linear; }
+
+    .controls { display: flex; align-items: center; gap: 10px; }
+    .btn { pointer-events: auto; user-select: none; border: 1px solid rgba(255,255,255,0.14); background: var(--panel); padding: 8px 14px; border-radius: 12px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; font-size: 12px; transition: transform 120ms ease, background 120ms ease, filter 120ms ease; }
+    .btn:hover { filter: brightness(1.2); transform: translateY(-1px); }
+
+    .center { display: grid; place-items: center; }
+    .panel { pointer-events: auto; background: rgba(2,6,23,0.66); border: 1px solid rgba(148,163,184,.25); border-radius: 18px; padding: 28px 24px; width: min(700px, 92vw); box-shadow: 0 10px 50px rgba(0,0,0,.45); text-align: center; }
+    .title { font-size: clamp(28px, 4vw, 44px); line-height: 1.1; margin: 0 0 12px; font-weight: 900; letter-spacing: .3px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .subtitle { opacity: .85; margin-bottom: 22px; }
+    .kbd { display: inline-block; border: 1px solid rgba(255,255,255,.18); border-bottom-width: 3px; padding: 3px 7px; border-radius: 8px; background: rgba(255,255,255,.08); box-shadow: 0 2px 0 rgba(255,255,255,.18) inset; font-weight: 700; font-size: .95rem; }
+
+    .bottom { display: grid; place-items: center; padding: 16px; }
+    .toast { pointer-events: none; opacity: .85; font-weight: 700; letter-spacing: .3px; }
+
+    .watermark { position: fixed; right: 10px; bottom: 8px; opacity: .45; font-size: 12px; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div class="hud">
+    <div class="topbar">
+      <div class="controls">
+        <div class="stat">Score: <span id="score">0</span></div>
+        <div class="stat">Wave: <span id="wave">1</span></div>
+        <div class="stat">WPM: <span id="wpm">0</span></div>
+        <div class="stat hpbar"><i id="hpFill" style="width: 100%"></i></div>
+      </div>
+      <div class="controls">
+        <button id="btnPause" class="btn" title="Pause / Resume (Enter)">Pause</button>
+        <button id="btnRestart" class="btn" title="Restart">Restart</button>
+      </div>
+    </div>
+
+    <div class="center">
+      <div id="startPanel" class="panel">
+        <h1 class="title">Typing Game</h1>
+        <p class="subtitle">A fast‑paced typing shooter. Type to target, finish the word to blast enemies. No mouse needed.</p>
+        <p>
+          <span class="kbd">A–Z</span> type letters
+          &nbsp;•&nbsp;<span class="kbd">Space</span> retarget
+          &nbsp;•&nbsp;<span class="kbd">Enter</span> pause
+        </p>
+        <div style="margin-top:16px">
+          <button id="btnStart" class="btn" style="font-size:14px;padding:10px 18px">Start Game</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom"><div id="toast" class="toast"></div></div>
+  </div>
+
+  <div class="watermark">Typing Game — single‑file demo</div>
+
+  <script>
+  // ======= Utility =======
+  const rand = (min, max) => Math.random() * (max - min) + min;
+  const choice = arr => arr[(Math.random() * arr.length) | 0];
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+  // ======= Canvas =======
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const DPR = Math.min(2, window.devicePixelRatio || 1);
+  function resize() {
+    canvas.width = Math.floor(innerWidth * DPR);
+    canvas.height = Math.floor(innerHeight * DPR);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  addEventListener('resize', resize);
+  resize();
+
+  // ======= Game State =======
+  const state = {
+    running: false,
+    paused: false,
+    score: 0,
+    wave: 1,
+    hp: 100,
+    enemies: [],
+    bullets: [],
+    particles: [],
+    targetId: null,
+    typed: '',
+    wordsTyped: 0,
+    charsTyped: 0,
+    startTime: 0,
+    lastSpawn: 0,
+  };
+
+  const ui = {
+    score: document.getElementById('score'),
+    wave: document.getElementById('wave'),
+    wpm: document.getElementById('wpm'),
+    hpFill: document.getElementById('hpFill'),
+    startPanel: document.getElementById('startPanel'),
+    toast: document.getElementById('toast'),
+    btnStart: document.getElementById('btnStart'),
+    btnPause: document.getElementById('btnPause'),
+    btnRestart: document.getElementById('btnRestart'),
+  };
+
+  // ======= Dictionary =======
+  const DICT = `alpha,angle,arc,asteroid,beam,bolt,byte,canon,charge,chip,cloud,code,comet,core,craft,data,delta,drift,drive,echo,ember,engine,fire,flux,flare,frame,gamma,gate,geode,glow,graph,grid,halo,ion,jolt,lance,laser,light,logic,loop,lumen,meteor,meta,mode,neon,node,nova,orbit,parse,photon,pixel,plasma,prime,proto,pulse,quant,quark,quartz,ray,reactor,scope,shell,ship,shock,sigma,spark,star,stream,syntax,theta,thruster,torus,trace,ultra,unit,vector,vertex,void,warp,wave,xi,zenith,zero,zip`.
+    split(',');
+
+  // ======= Entities =======
+  let ENEMY_ID = 0;
+  function spawnEnemy(now) {
+    const word = choice(DICT);
+    const id = ENEMY_ID++;
+    const speed = rand(28, 50) + state.wave * 3; // px/s
+    const x = rand(40, innerWidth - 40);
+    const y = -20;
+    state.enemies.push({ id, word, progress: 0, x, y, speed, hp: word.length, created: now, targeted: false });
+    state.lastSpawn = now;
+  }
+
+  function fireBullet(fromX, fromY, toX, toY) {
+    const dx = toX - fromX, dy = toY - fromY;
+    const len = Math.hypot(dx, dy) || 1;
+    const vx = (dx / len) * 600; // px/s
+    const vy = (dy / len) * 600;
+    state.bullets.push({ x: fromX, y: fromY, vx, vy, life: 1 });
+  }
+
+  function explode(x, y, color = '#7dd3fc') {
+    for (let i = 0; i < 18; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const s = rand(60, 200);
+      state.particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, color });
+    }
+  }
+
+  // ======= Player =======
+  function playerPos() { return { x: innerWidth / 2, y: innerHeight - 40 }; }
+
+  // ======= Input =======
+  addEventListener('keydown', (e) => {
+    if (!state.running) return;
+
+    if (e.key === 'Enter') { togglePause(); return; }
+    if (state.paused) return;
+
+    if (e.key === ' ') { // Space to retarget
+      e.preventDefault();
+      state.typed = '';
+      state.targetId = null;
+      setToast('Retarget');
+      return;
+    }
+
+    const key = e.key.toLowerCase();
+    if (!/^[a-z]$/.test(key)) return;
+
+    state.charsTyped++;
+
+    // Pick or continue target
+    let target = state.enemies.find(e => e.id === state.targetId);
+    if (!target) {
+      target = state.enemies.find(en => en.word[0] === key);
+      if (target) {
+        state.targetId = target.id;
+        target.targeted = true;
+      } else {
+        damage(1);
+        setToast('⚠ Miss-key');
+        return;
+      }
+    }
+
+    const need = target.word[target.progress];
+    if (need === key) {
+      target.progress++;
+      const p = playerPos();
+      fireBullet(p.x, p.y, target.x, target.y);
+      if (target.progress >= target.word.length) {
+        explode(target.x, target.y);
+        state.score += 10 + 2 * target.word.length + 2 * state.wave;
+        state.wordsTyped++;
+        state.enemies = state.enemies.filter(e2 => e2.id !== target.id);
+        state.targetId = null;
+        setToast('✓ Destroyed');
+      }
+    } else {
+      damage(2);
+      setToast('✗ Wrong letter');
+    }
+  });
+
+  // ======= Damage / HP =======
+  function damage(amount) {
+    state.hp = clamp(state.hp - amount, 0, 100);
+    ui.hpFill.style.width = state.hp + '%';
+    if (state.hp <= 0) gameOver();
+  }
+
+  // ======= UI helpers =======
+  let toastT = 0;
+  function setToast(text) { ui.toast.textContent = text; toastT = performance.now(); }
+
+  function updateWPM(now) {
+    const minutes = (now - state.startTime) / 60000;
+    const wpm = minutes > 0 ? Math.round(state.charsTyped / 5 / minutes) : 0;
+    ui.wpm.textContent = wpm;
+  }
+
+  // ======= Buttons =======
+  ui.btnStart.onclick = start;
+  ui.btnRestart.onclick = restart;
+  ui.btnPause.onclick = togglePause;
+
+  function start() {
+    Object.assign(state, {
+      running: true, paused: false, score: 0, wave: 1, hp: 100,
+      enemies: [], bullets: [], particles: [], targetId: null, typed: '',
+      wordsTyped: 0, charsTyped: 0, startTime: performance.now(), lastSpawn: 0
+    });
+    ui.startPanel.classList.add('hidden');
+    ui.hpFill.style.width = '100%';
+    loopReset();
+  }
+
+  function restart() {
+    ui.startPanel.classList.add('hidden');
+    start();
+  }
+
+  function togglePause() {
+    if (!state.running) return;
+    state.paused = !state.paused;
+    ui.btnPause.textContent = state.paused ? 'Resume' : 'Pause';
+    setToast(state.paused ? 'Paused' : 'Resumed');
+  }
+
+  function gameOver() {
+    state.running = false;
+    state.paused = false;
+    ui.startPanel.classList.remove('hidden');
+    ui.startPanel.querySelector('.subtitle').innerHTML =
+      `Game over. Score <b>${state.score}</b>, Wave <b>${state.wave}</b>, WPM <b>${ui.wpm.textContent}</b>.`;
+  }
+
+  // ======= Spawn & Loop =======
+  function spawnLogic(now) {
+    const baseDelay = clamp(1600 - state.wave * 80, 700, 1600);
+    if (now - state.lastSpawn > baseDelay) spawnEnemy(now);
+    if (state.enemies.length === 0 && now - state.startTime > 8000) {
+      state.wave++;
+      ui.wave.textContent = state.wave;
+      setToast(`Wave ${state.wave}`);
+    }
+  }
+
+  let last = 0;
+  function loopReset() { last = performance.now(); requestAnimationFrame(loop); }
+
+  function loop(now) {
+    if (!state.running) return;
+    const dt = Math.min(0.033, (now - last) / 1000);
+    last = now;
+    if (!state.paused) {
+      update(now, dt);
+      draw(now, dt);
+    }
+    requestAnimationFrame(loop);
+  }
+
+  function update(now, dt) {
+    updateWPM(now);
+    spawnLogic(now);
+
+    for (const e of state.enemies) {
+      e.y += e.speed * dt;
+      if (e.y > innerHeight - 32) {
+        explode(e.x, innerHeight - 38, '#f87171');
+        state.enemies = state.enemies.filter(e2 => e2.id !== e.id);
+        damage(8 + e.word.length);
+      }
+    }
+
+    for (const b of state.bullets) {
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+      b.life -= dt * 1.2;
+    }
+    state.bullets = state.bullets.filter(b => b.life > 0);
+
+    for (const p of state.particles) {
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vx *= 0.985; p.vy *= 0.985;
+      p.life -= dt * 0.8;
+    }
+    state.particles = state.particles.filter(p => p.life > 0);
+
+    ui.score.textContent = state.score;
+    ui.wave.textContent = state.wave;
+
+    const since = now - toastT;
+    ui.toast.style.opacity = since < 1200 ? 0.9 : Math.max(0, 1 - (since - 1200) / 600);
+  }
+
+  // ======= Rendering =======
+  function draw(now, dt) {
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+    drawStars(now);
+
+    const p = playerPos();
+    drawShip(p.x, p.y);
+
+    for (const e of state.enemies) drawWordEnemy(e);
+
+    ctx.lineWidth = 2;
+    for (const b of state.bullets) {
+      ctx.globalAlpha = b.life;
+      ctx.beginPath();
+      ctx.moveTo(b.x, b.y);
+      ctx.lineTo(b.x - b.vx * 0.03, b.y - b.vy * 0.03);
+      ctx.strokeStyle = '#7dd3fc';
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    for (const p of state.particles) {
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(p.x, p.y, 2, 2);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  function drawShip(x, y) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.beginPath();
+    ctx.moveTo(0, -8);
+    ctx.lineTo(10, 12);
+    ctx.lineTo(-10, 12);
+    ctx.closePath();
+    ctx.fillStyle = '#9ca3af';
+    ctx.fill();
+    ctx.strokeStyle = '#d1d5db';
+    ctx.stroke();
+    // engine glow
+    ctx.beginPath();
+    ctx.arc(0, 12, 6, 0, Math.PI * 2);
+    const g = ctx.createRadialGradient(0, 12, 0, 0, 12, 12);
+    g.addColorStop(0, 'rgba(125,211,252,0.8)');
+    g.addColorStop(1, 'rgba(125,211,252,0)');
+    ctx.fillStyle = g; ctx.fill();
+    ctx.restore();
+  }
+
+  function drawWordEnemy(e) {
+    const text = e.word;
+    const prog = e.progress;
+    ctx.save();
+    ctx.font = '700 22px ui-monospace, Menlo, Consolas, monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    const w = ctx.measureText(text).width + 22;
+    const h = 34;
+    roundRect(ctx, e.x - w / 2, e.y - h / 2, w, h, 12);
+    ctx.fillStyle = 'rgba(2,6,23,0.75)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(148,163,184,0.35)';
+    ctx.stroke();
+
+    const left = text.slice(0, prog);
+    const right = text.slice(prog);
+    ctx.fillStyle = '#7dd3fc';
+    ctx.fillText(left, e.x - ctx.measureText(right).width / 2, e.y);
+    ctx.fillStyle = 'rgba(226,232,240,0.9)';
+    ctx.fillText(right, e.x + ctx.measureText(left).width / 2, e.y);
+
+    if (state.targetId === e.id) {
+      ctx.beginPath();
+      ctx.arc(e.x, e.y - 26, 6, 0, Math.PI * 2);
+      ctx.strokeStyle = '#a78bfa';
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  // ======= Parallax stars =======
+  const starsA = new Array(90).fill(0).map(() => ({ x: Math.random() * innerWidth, y: Math.random() * innerHeight, z: rand(.2, .7) }));
+  const starsB = new Array(70).fill(0).map(() => ({ x: Math.random() * innerWidth, y: Math.random() * innerHeight, z: rand(.7, 1) }));
+  function drawStars(now) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    for (const s of starsA) { s.y += s.z * 8; if (s.y > innerHeight) { s.y = 0; s.x = Math.random() * innerWidth; } ctx.fillRect(s.x, s.y, 1, 1); }
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    for (const s of starsB) { s.y += s.z * 16; if (s.y > innerHeight) { s.y = 0; s.x = Math.random() * innerWidth; } ctx.fillRect(s.x, s.y, 1.2, 1.2); }
+    ctx.restore();
+  }
+
+  // Startup hint
+  setToast('Press Start');
+  </script>
+</body>
+</html>
