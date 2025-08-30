@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sudoku Game</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: linear-gradient(135deg, #e0f7fa, #fce4ec);
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      margin-bottom: 10px;
+      font-size: 32px;
+      color: #333;
+      text-shadow: 1px 1px 2px #aaa;
+    }
+    .controls {
+      margin-bottom: 20px;
+    }
+    select, button {
+      margin: 5px;
+      padding: 8px 12px;
+      font-size: 14px;
+      border-radius: 6px;
+      border: 1px solid #888;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    select:hover, button:hover {
+      background: #ddd;
+    }
+    #sudoku {
+      display: grid;
+      gap: 0;
+      background: #000;
+      margin: 20px 0;
+      transition: transform 0.3s ease-in-out;
+    }
+    .cell {
+      width: 45px;
+      height: 45px;
+      text-align: center;
+      font-size: 18px;
+      border: 1px solid #aaa;
+      background: #fff;
+      outline: none;
+      transition: background 0.3s;
+    }
+    .cell:hover {
+      background: #f0f0f0;
+    }
+    .cell[disabled] {
+      background: #ddd;
+      font-weight: bold;
+    }
+    .bold-border {
+      border-width: 2px;
+      border-color: #000;
+    }
+    .win {
+      animation: flash 1s ease-in-out 3;
+    }
+    @keyframes flash {
+      0%, 100% { background-color: #fff; }
+      50% { background-color: #a5d6a7; }
+    }
+    /* Confetti */
+    .confetti {
+      position: fixed;
+      width: 10px;
+      height: 10px;
+      background: red;
+      top: -10px;
+      animation: fall 3s linear forwards;
+    }
+    @keyframes fall {
+      to {
+        transform: translateY(100vh) rotate(720deg);
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Sudoku Game</h1>
+  <div class="controls">
+    <label>Board Size:</label>
+    <select id="size">
+      <option value="4">4x4</option>
+      <option value="6">6x6</option>
+      <option value="9" selected>9x9</option>
+    </select>
+    <label>Difficulty:</label>
+    <select id="difficulty">
+      <option value="easy">Easy</option>
+      <option value="medium" selected>Medium</option>
+      <option value="hard">Hard</option>
+    </select>
+    <button onclick="newGame()">New Game</button>
+    <button onclick="checkSolution()">Check Solution</button>
+  </div>
+  <div id="sudoku"></div>
+
+  <script>
+    let solution = [];
+    let size = 9;
+
+    function createEmptyBoard(n) {
+      return Array.from({ length: n }, () => Array(n).fill(0));
+    }
+
+    function isValid(board, row, col, num) {
+      let n = board.length;
+      let boxSize = Math.sqrt(n);
+      for (let x = 0; x < n; x++) {
+        if (board[row][x] === num || board[x][col] === num) return false;
+      }
+      let startRow = row - row % boxSize, startCol = col - col % boxSize;
+      for (let i = 0; i < boxSize; i++) {
+        for (let j = 0; j < boxSize; j++) {
+          if (board[i + startRow][j + startCol] === num) return false;
+        }
+      }
+      return true;
+    }
+
+    function solveBoard(board) {
+      let n = board.length;
+      for (let row = 0; row < n; row++) {
+        for (let col = 0; col < n; col++) {
+          if (board[row][col] === 0) {
+            for (let num = 1; num <= n; num++) {
+              if (isValid(board, row, col, num)) {
+                board[row][col] = num;
+                if (solveBoard(board)) return true;
+                board[row][col] = 0;
+              }
+            }
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+
+    function generateBoard(n, difficulty) {
+      let board = createEmptyBoard(n);
+      solveBoard(board); 
+      solution = board.map(r => [...r]); // keep solved copy
+
+      let removeCount;
+      if (difficulty === "easy") removeCount = n * n * 0.4;
+      else if (difficulty === "medium") removeCount = n * n * 0.55;
+      else removeCount = n * n * 0.7;
+
+      while (removeCount > 0) {
+        let i = Math.floor(Math.random() * n);
+        let j = Math.floor(Math.random() * n);
+        if (board[i][j] !== 0) {
+          board[i][j] = 0;
+          removeCount--;
+        }
+      }
+      return board;
+    }
+
+    function renderBoard(board) {
+      const sudoku = document.getElementById("sudoku");
+      sudoku.innerHTML = "";
+      sudoku.style.gridTemplateColumns = `repeat(${board.length}, 45px)`;
+
+      let n = board.length;
+      let boxSize = Math.sqrt(n);
+
+      for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+          const input = document.createElement("input");
+          input.className = "cell";
+
+          // bold borders for subgrids
+          if (i % boxSize === 0) input.style.borderTop = "3px solid black";
+          if (j % boxSize === 0) input.style.borderLeft = "3px solid black";
+          if (i === n - 1) input.style.borderBottom = "3px solid black";
+          if (j === n - 1) input.style.borderRight = "3px solid black";
+
+          if (board[i][j] !== 0) {
+            input.value = board[i][j];
+            input.disabled = true;
+          } else {
+            input.addEventListener("input", (e) => {
+              let val = parseInt(e.target.value);
+              if (isNaN(val) || val < 1 || val > n) {
+                e.target.value = "";
+              }
+            });
+          }
+          input.dataset.row = i;
+          input.dataset.col = j;
+          sudoku.appendChild(input);
+        }
+      }
+    }
+
+    function newGame() {
+      size = parseInt(document.getElementById("size").value);
+      let difficulty = document.getElementById("difficulty").value;
+      let board = generateBoard(size, difficulty);
+      renderBoard(board);
+    }
+
+    function checkSolution() {
+      let inputs = document.querySelectorAll(".cell");
+      let correct = true;
+      inputs.forEach(input => {
+        if (!input.disabled) {
+          let row = input.dataset.row;
+          let col = input.dataset.col;
+          if (parseInt(input.value) !== solution[row][col]) {
+            correct = false;
+            input.style.background = "#ffcdd2"; // red for wrong
+          } else {
+            input.style.background = "#c8e6c9"; // green for right
+          }
+        }
+      });
+
+      if (correct) {
+        winAnimation();
+      }
+    }
+
+    function winAnimation() {
+      document.getElementById("sudoku").classList.add("win");
+
+      // Confetti
+      for (let i = 0; i < 100; i++) {
+        let confetti = document.createElement("div");
+        confetti.className = "confetti";
+        confetti.style.left = Math.random() * window.innerWidth + "px";
+        confetti.style.background = `hsl(${Math.random() * 360},100%,50%)`;
+        confetti.style.animationDuration = 2 + Math.random() * 3 + "s";
+        document.body.appendChild(confetti);
+
+        setTimeout(() => confetti.remove(), 4000);
+      }
+    }
+
+    newGame();
+  </script>
+</body>
+</html>
