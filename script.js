@@ -167,7 +167,7 @@ wireForm(contactForm, async ()=>{
 
   let sent = false;
   try{
-    if(window.emailjs && EMAILJS_PUBLIC_KEY !== 'YOUR_EMAILJS_PUBLIC_KEY'){
+    if(window.emailjs && EMAILJS_PUBLIC_KEY !== 'BdYe8tQLJJ9D6NYym'){
       emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
       await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
         from_name: name, reply_to: email, message: msg
