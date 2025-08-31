@@ -1,3 +1,5 @@
+![Portfolio Preview](./assets/banner.png)
+
 # 🌐 Personal Portfolio - Yash Kumar Roy
 
 Welcome to the repository for my **personal portfolio website**!  
@@ -39,3 +41,49 @@ yashkumarroy/
 ├── css/             # Stylesheets
 ├── js/              # JavaScript files
 └── README.md        # Project documentation
+
+```
+---
+
+## ⚙️ Setup & Installation
+To run this project locally:
+
+```bash
+# Clone the repository
+git clone https://github.com/SpidY21/yashkumarroy.git
+
+# Navigate to the project folder
+cd yashkumarroy
+
+# Open index.html in your browser
+No additional dependencies are required since this is a static site.
+
+```
+
+## 🚀 Usage
+- Simply open the site link: [Portfolio Live](https://spidy21.github.io/yashkumarroy/).
+- Navigate through different sections (Projects, Resume, Skills).
+- Bookmark the site for quick access.
+
+## 🔍 SEO & Performance
+#### The site includes:
+- Meta tags for description, author, and viewport.
+- Open Graph tags for link previews.
+- Favicon support for brand identity.
+- Lightweight assets for faster loading.
+
+## 🌎 Deployment
+### This project is deployed using GitHub Pages.
+### Steps followed:
+1. Pushed code to ```main``` branch.
+2. Enabled GitHub Pages under repository settings.
+3. Live site hosted at: ```https://spidy21.github.io/yashkumarroy/```
+
+## 📬 Contact
+### 👤 Yash Kumar Roy
+- GitHub: `@SpidY21`
+- Portfolio: [Live Website](https://spidy21.github.io/yashkumarroy/)
+- LinkedIn: [Yash Kumar Roy](https://www.linkedin.com/in/yashkumarroy/)
+- Email: yashkumarroy164@gmail.com
+
+
