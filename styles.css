@@ -92,7 +92,7 @@ body{font-family:Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Robot
 .stack li{padding:.25rem .5rem; border:1px solid var(--border); border-radius:8px; font-size:.8rem; background:color-mix(in oklch, var(--panel), transparent 90%)}
 
 /* Ensure buttons are always clickable */
-.links a, .links button { position:relative; z-index:1; pointer-events:auto }
+.links a, .links button { position:relative; z-index:1; pointer-events:auto;text-align: center; }
 
 /* Projects */
 .projects-grid{grid-template-columns:repeat(auto-fit, minmax(280px,1fr))}
@@ -103,7 +103,9 @@ body{font-family:Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Robot
 .project-body{padding:1rem 1.2rem}
 .project-body h3{font-size:1.1rem; margin-bottom:.4rem}
 .project-body p{color:var(--muted); margin-bottom:.8rem}
-.links{display:flex; gap:.5rem; flex-wrap:wrap}
+.links{display:flex; gap:.5rem; flex-wrap:wrap;text-align: center;  display: flex;
+  justify-content: center;
+  align-items: center;}
 
 /* Blog */
 .blog-grid{grid-template-columns:repeat(auto-fit, minmax(280px,1fr))}
