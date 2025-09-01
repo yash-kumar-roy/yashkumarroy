@@ -6,7 +6,7 @@ Welcome to the repository for my **personal portfolio website**!
 This site showcases my **skills, projects, and experience** in **Machine Learning, Data Science, and Web Development**.  
 It’s designed with a **futuristic, tech-inspired theme** to reflect my passion for AI and modern technologies.  
 
-🔗 **Live Site:** [spidy21.github.io/yashkumarroy](https://spidy21.github.io/yashkumarroy)
+🔗 **Live Site:** [yash-kumar-roy.github.io/yashkumarroy](https://yash-kumar-roy.github.io/yashkumarroy)
 
 ---
 
@@ -50,7 +50,7 @@ To run this project locally:
 
 ```bash
 # Clone the repository
-git clone https://github.com/SpidY21/yashkumarroy.git
+git clone https://github.com/yash-kumar-roy/yashkumarroy.git
 
 # Navigate to the project folder
 cd yashkumarroy
@@ -61,7 +61,7 @@ No additional dependencies are required since this is a static site.
 ```
 
 ## 🚀 Usage
-- Simply open the site link: [Portfolio Live](https://spidy21.github.io/yashkumarroy/).
+- Simply open the site link: [Portfolio Live](https://yash-kumar-roy.github.io/yashkumarroy/).
 - Navigate through different sections (Projects, Resume, Skills).
 - Bookmark the site for quick access.
 
@@ -77,12 +77,12 @@ No additional dependencies are required since this is a static site.
 ### Steps followed:
 1. Pushed code to ```main``` branch.
 2. Enabled GitHub Pages under repository settings.
-3. Live site hosted at: ```https://spidy21.github.io/yashkumarroy/```
+3. Live site hosted at: ```https://yash-kumar-roy.github.io/yashkumarroy/```
 
 ## 📬 Contact
 ### 👤 Yash Kumar Roy
-- GitHub: `@SpidY21`
-- Portfolio: [Live Website](https://spidy21.github.io/yashkumarroy/)
+- GitHub: `@yash-kumar-roy`
+- Portfolio: [Live Website](https://yash-kumar-roy.github.io/yashkumarroy/)
 - LinkedIn: [Yash Kumar Roy](https://www.linkedin.com/in/yashkumarroy/)
 - Email: yashkumarroy164@gmail.com
 
