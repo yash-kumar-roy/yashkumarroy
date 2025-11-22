@@ -5,19 +5,13 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
 
-  <!--   <meta name="google-site-verification" content="google75d52362e33b1792"> -->
-
-
   <title>Yash Kumar Roy — Turning Data into Impactful Decisions</title>
   <meta name="description"
     content="Portfolio of Yash Kumar Roy — Data Science Associate. Case studies, projects, blog, resume, and contact." />
   <meta name="color-scheme" content="light dark" />
   <script>document.documentElement.classList.remove('no-js');</script>
 
-
-
   <!-- For Site Icon -->
-
   <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="./assets/favicon-16x16.png">
@@ -26,59 +20,40 @@
   <!-- for round logo icon -->
   <img src="./assets/favicon-32x32.png" style="border-radius:50%; width:32px; height:32px;" alt="favicon">
 
-
-
-
-
-  <!-- Analytics (pick one and set IDs in head later if you want) -->
-  <!-- GA4 -->
+  <!-- Analytics -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-GKKRHYMGNK"></script>
   <script>
     window.dataLayer = window.dataLayer || []; function gtag() { dataLayer.push(arguments) }
     gtag('js', new Date()); gtag('config', 'G-GKKRHYMGNK', { anonymize_ip: true });
   </script>
-  <!-- Plausible -->
   <script defer data-domain="https://yash-kumar-roy.github.io/yashkumarroy/"
     src="https://plausible.io/js/script.js"></script>
 
   <link rel="preload" href="styles.css" as="style" />
   <link rel="stylesheet" href="styles.css" />
 
-
-
-
-  <!-- Canonical: consolidate SEO signals -->
   <link rel="canonical" href="https://yash-kumar-roy.github.io/yashkumarroy/" />
-
-  <!-- Favicons / PWA (replace files when you add them; harmless if 404) -->
   <link rel="icon" href="assets/favicon.ico">
   <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
   <link rel="manifest" href="site.webmanifest">
 
-  <!-- Basic SEO preferences -->
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
 
-  <!-- Open Graph (Facebook, LinkedIn, etc.) -->
   <meta property="og:title" content="Yash Kumar Roy — Data Science & Machine Learning Portfolio">
   <meta property="og:description"
     content="Data Science Associate. Projects in Machine Learning, Analytics, and AI with Python, scikit-learn, TensorFlow, and Streamlit.">
   <meta property="og:url" content="https://yash-kumar-roy.github.io/yashkumarroy/">
   <meta property="og:type" content="website">
-  <!-- Create a 1200x630 image at assets/og-image.png -->
   <meta property="og:image" content="https://yash-kumar-roy.github.io/yashkumarroy/assets/og-image.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
 
-  <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Yash Kumar Roy — Data Science & Machine Learning Portfolio">
   <meta name="twitter:description"
     content="Turning Data into Impactful Decisions. Explore DS/ML case studies, apps, resume, and contact.">
   <meta name="twitter:image" content="https://yash-kumar-roy.github.io/yashkumarroy/assets/og-image.png">
 
-
-
-  <!-- Structured Data: Person -->
   <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -98,7 +73,6 @@
 }
 </script>
 
-  <!-- Structured Data: WebSite -->
   <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -113,13 +87,6 @@
   }
 }
 </script>
-
-
-
-
-
-
-
 </head>
 
 <body>
@@ -141,11 +108,10 @@
         <ul>
           <li><a href="#skills">Skills</a></li>
           <li><a href="#featured">Case Studies</a></li>
-          <li><a href="#projects">Project</a></li>
+          <li><a href="#projects">Projects</a></li>
           <li><a href="#blog">Blog</a></li>
           <li><a href="#resume">Resume</a></li>
           <li><a href="#timeline">Timeline</a></li>
-          <li><a href="#contact" class="btn btn--sm btn--primary">Contact</a></li>
           <li><a class="btn btn--sm btn--ghost" href="resume.pdf" download>Download CV</a></li>
           <li>
             <button class="theme-toggle" type="button" data-theme-toggle aria-label="Toggle dark mode">
@@ -169,7 +135,6 @@
             engineering.</p>
           <div class="hero-cta">
             <a href="#featured" class="btn btn--primary">View Case Studies</a>
-            <a href="#contact" class="btn btn--ghost">Hire me</a>
           </div>
           <ul class="tool-chips" aria-label="Tools I use">
             <li>Python</li>
@@ -188,7 +153,6 @@
           <div class="blob b1"></div>
           <div class="blob b2"></div>
           <div class="blob b3"></div>
-          <!-- profile card removed -->
         </div>
       </div>
     </section>
@@ -260,11 +224,11 @@
                 target="_blank" rel="noopener">GitHub</a>
               <button type="button" class="btn btn--ghost" data-open-case='{
                 "title":"Telecom Churn Prediction",
-                "problem":"Reduce customer churn by predicting at-risk users before renewal.",
+                "problem":"**Situation**: Telecom provider facing high customer churn rates.\\n**Task**: Build a predictive model to identify at-risk customers and suggest retention strategies.",
                 "tech":["Python","scikit-learn","Pandas","Streamlit","Machine Learning"],
-                "challenges":["Class imbalance","Feature leakage","Probability calibration"],
-                "solutions":["SMOTE + class_weight","Time-based split","CalibratedClassifierCV"],
-                "achievements":["AUC: 0.89 (hold-out)","Lift@10: 2.1x","Interactive scenario testing"]
+                "challenges":["Class imbalance (85/15 split)","Feature leakage risk","Probability calibration for business use"],
+                "solutions":["**Action**: Implemented SMOTE for balance, time-based splitting to prevent leakage, and CalibratedClassifierCV for accurate probabilities.", "**Result**: Achieved AUC of 0.89 and a Lift@10 of 2.1x, meaning the top 10% of predicted risky users contained 2.1x more actual churners than random selection."],
+                "achievements":["Deployed interactive Streamlit app for real-time \"what-if\" analysis."]
               }'>Read More</button>
             </div>
           </article>
@@ -287,11 +251,11 @@
                 rel="noopener">GitHub</a>
               <button type="button" class="btn btn--ghost" data-open-case='{
                 "title":"Medical Cost Prediction",
-                "problem":"Estimate insurance charges to improve pricing and transparency.",
+                "problem":"**Situation**: Insurance premiums were inconsistent and opaque.\\n**Task**: Develop a regression model to estimate charges fairly based on patient data.",
                 "tech":["Python","scikit-learn","Pandas","SHAP","Streamlit"],
-                "challenges":["Non-linearities","Outliers","Explainability"],
-                "solutions":["XGBoost + ElasticNet","Winsorization/Box-Cox","SHAP insight cards"],
-                "achievements":["MAE: $1183","R²: 0.78","Explainable predictions in UI"]
+                "challenges":["Non-linear relationships (BMI/Smoking interaction)","High-value outliers","Need for explainability"],
+                "solutions":["**Action**: Engineered interaction features, used XGBoost with ElasticNet regularization, and integrated SHAP values for local explainability.", "**Result**: Reduced MAE to $1183 (R²: 0.78) and provided clear, per-patient cost drivers."],
+                "achievements":["Created an explainable UI where users can see exactly why their premium is high or low."]
               }'>Read More</button>
             </div>
           </article>
@@ -310,11 +274,11 @@
                 rel="noopener">GitHub</a>
               <button type="button" class="btn btn--ghost" data-open-case='{
                 "title":"Style Transfer (GAN)",
-                "problem":"Apply source style to target images without paired data.",
+                "problem":"**Situation**: Artistic style transfer often lacks consistency.\\n**Task**: Build a custom GAN to apply artistic styles to photos without paired training data.",
                 "tech":["TensorFlow","Keras","Python"],
-                "challenges":["Training stability","Mode collapse","Perceptual quality"],
-                "solutions":["Wasserstein loss + GP","Instance & spectral norm","LPIPS validation"],
-                "achievements":["Stable training to 120k iters","FID: 32→24","Gallery in README"]
+                "challenges":["Training instability (mode collapse)","Preserving content structure","Perceptual quality metrics"],
+                "solutions":["**Action**: Implemented Wasserstein loss with Gradient Penalty (WGAN-GP) and Instance Normalization. Used LPIPS metric for validation.", "**Result**: Stabilized training up to 120k iterations and improved FID score from 32 to 24."],
+                "achievements":["Generated a gallery of high-resolution stylized images."]
               }'>Read More</button>
             </div>
           </article>
@@ -336,19 +300,19 @@
         </header>
 
         <div class="grid projects-grid" id="projectGrid">
-          <!-- your project cards here (unchanged) -->
-
 
           <article class="card project flip" data-category="web-app" data-animate>
-            <div class="cover wa">🔢</div>
+            <div class="cover wa"
+              style="background-image: url('C:/Users/Yash/.gemini/antigravity/brain/9ddb78dc-3003-4dde-8f5c-27df75d765f3/sudoku_thumbnail_1763841193955.png')">
+            </div>
             <div class="project-body">
               <h3>Sudoku Game</h3>
               <p class="muted">Simple Sudoku Game with multiple difficulties.</p>
               <div class="links"><a class="btn btn--primary" href="./Sudoku/index.html" target="_blank"
                   rel="noopener">Live</a></div>
             </div>
-
           </article>
+
           <article class="card project flip" data-category="web-app" data-animate>
             <div class="cover wa">🍎</div>
             <div class="project-body">
@@ -358,8 +322,11 @@
                   rel="noopener">Play</a></div>
             </div>
           </article>
+
           <article class="card project flip" data-category="web-app" data-animate>
-            <div class="cover wa">📐</div>
+            <div class="cover wa"
+              style="background-image: url('C:/Users/Yash/.gemini/antigravity/brain/9ddb78dc-3003-4dde-8f5c-27df75d765f3/equation_solver_thumbnail_1763841210617.png')">
+            </div>
             <div class="project-body">
               <h3>Equation Solver Tools</h3>
               <p class="muted">Linear, quadratic & systems.</p>
@@ -369,7 +336,9 @@
           </article>
 
           <article class="card project flip" data-category="web-app" data-animate>
-            <div class="cover wa">⌨</div>
+            <div class="cover wa"
+              style="background-image: url('C:/Users/Yash/.gemini/antigravity/brain/9ddb78dc-3003-4dde-8f5c-27df75d765f3/typing_game_thumbnail_1763841224904.png')">
+            </div>
             <div class="project-body">
               <h3>Typing Game</h3>
               <p class="muted">a typing game to check your typing skill.</p>
@@ -377,19 +346,6 @@
                   rel="noopener">Live</a></div>
             </div>
           </article>
-
-          <!-- Sample starts -->
-
-          <!-- <article class="card project flip" data-category="web-app" data-animate>
-            <div class="cover wa">📐</div>
-            <div class="project-body">
-              <h3>Equation Solver Tools</h3>
-              <p class="muted">Linear, quadratic & systems.</p>
-              <div class="links"><a class="btn btn--primary" href="./Equation Solver Tool/index.html" target="_blank" rel="noopener">Live</a></div>
-            </div>
-          </article> -->
-
-          <!-- Sample ends -->
 
           <article class="card project flip" data-category="web-app" data-animate>
             <div class="cover wa">🐍</div>
@@ -402,7 +358,9 @@
           </article>
 
           <article class="card project flip" data-category="web-app" data-animate>
-            <div class="cover wa">🛠️</div>
+            <div class="cover wa"
+              style="background-image: url('C:/Users/Yash/.gemini/antigravity/brain/9ddb78dc-3003-4dde-8f5c-27df75d765f3/photo_compressor_thumbnail_1763841238599.png')">
+            </div>
             <div class="project-body">
               <h3>Photo compressor</h3>
               <p class="muted">Compress your Photos</p>
@@ -421,15 +379,6 @@
             </div>
           </article>
 
-          <!--           <article class="card project flip" data-category="web-app" data-animate>
-            <div class="cover wa">📐</div>
-            <div class="project-body">
-              <h3>Family Tree</h3>
-              <p class="muted">Draw Family Tree.</p>
-              <div class="links"><a class="btn btn--primary" href="./Family Tree/index.html" target="_blank" rel="noopener">Live</a></div>
-            </div>
-          </article> -->
-
           <article class="card project flip" data-category="web-app" data-animate>
             <div class="cover wa">𝕏</div>
             <div class="project-body">
@@ -440,15 +389,6 @@
             </div>
           </article>
 
-          <!--           <article class="card project flip" data-category="web-app" data-animate>
-            <div class="cover wa">📐</div>
-            <div class="project-body">
-              <h3>MarkdoenSlide</h3>
-              <p class="muted">Make markdown from text</p>
-              <div class="links"><a class="btn btn--primary" href="./MarkdownSlides/index.html" target="_blank" rel="noopener">Live</a></div>
-            </div>
-          </article> -->
-
           <article class="card project flip" data-category="web-app" data-animate>
             <div class="cover wa">📝</div>
             <div class="project-body">
@@ -458,18 +398,6 @@
                   rel="noopener">Live</a></div>
             </div>
           </article>
-
-          <!--           <article class="card project flip" data-category="web-app" data-animate>
-            <div class="cover wa">📐</div>
-            <div class="project-body">
-              <h3>Todo List</h3>
-              <p class="muted">Simple Todo list.</p>
-              <div class="links"><a class="btn btn--primary" href="./Todo list/index.html" target="_blank" rel="noopener">Live</a></div>
-            </div>
-          </article> -->
-
-
-
 
           <article class="card project flip" data-category="data-science" data-animate>
             <div class="cover ds">🤖</div>
@@ -511,7 +439,7 @@
       </div>
     </section>
 
-    <!-- Blog (Markdown → HTML only; composer removed) -->
+    <!-- Blog -->
     <section id="blog" class="section alt">
       <div class="container">
         <header class="section-head">
@@ -607,68 +535,6 @@
         </ol>
       </div>
     </section>
-
-    <!-- Contact -->
-    <section id="contact" class="section">
-      <div class="container">
-        <header class="section-head">
-          <h2>Let’s work together</h2>
-          <!-- <p>Message goes to my inbox via EmailJS (with mail client fallback).</p> -->
-        </header>
-
-        <form class="card form" id="contactForm" novalidate>
-          <div class="grid form-grid">
-            <label><span>Name</span><input name="name" type="text" required placeholder="Your name" /><small
-                class="error" aria-live="polite"></small></label>
-            <label><span>Email</span><input name="email" type="email" required placeholder="you@example.com" /><small
-                class="error" aria-live="polite"></small></label>
-            <label class="grid-col-span-2"><span>Message</span><textarea name="message" required rows="5"
-                placeholder="Your message..."></textarea><small class="error" aria-live="polite"></small></label>
-            <div class="actions grid-col-span-2">
-              <span></span>
-              <button type="submit" class="btn btn--primary">Send</button>
-            </div>
-          </div>
-          <p class="form-success" hidden role="status">Thanks! Your message has been sent.</p>
-          <p class="form-fail muted" hidden role="status">Couldn’t send automatically — your mail app will open instead.
-          </p>
-        </form>
-
-        <div class="contact-cards">
-          <a class="card contact-card" href="mailto:yashkumarroy164@gmail.com"><span>📧</span>
-            yashkumarroy164@gmail.com</a>
-          <a class="card contact-card" href="https://github.com/yash-kumar-roy" target="_blank"
-            rel="noopener"><span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"
-                color="#000000" fill="none">
-                <path d="M10 20.5675C6.57143 21.7248 3.71429 20.5675 2 17" stroke="#141B34" stroke-width="1.5"
-                  stroke-linecap="round" stroke-linejoin="round" />
-                <path
-                  d="M10 22V18.7579C10 18.1596 10.1839 17.6396 10.4804 17.1699C10.6838 16.8476 10.5445 16.3904 10.1771 16.2894C7.13394 15.4528 5 14.1077 5 9.64606C5 8.48611 5.38005 7.39556 6.04811 6.4464C6.21437 6.21018 6.29749 6.09208 6.31748 5.9851C6.33746 5.87813 6.30272 5.73852 6.23322 5.45932C5.95038 4.32292 5.96871 3.11619 6.39322 2.02823C6.39322 2.02823 7.27042 1.74242 9.26698 2.98969C9.72282 3.27447 9.95075 3.41686 10.1515 3.44871C10.3522 3.48056 10.6206 3.41384 11.1573 3.28041C11.8913 3.09795 12.6476 3 13.5 3C14.3524 3 15.1087 3.09795 15.8427 3.28041C16.3794 3.41384 16.6478 3.48056 16.8485 3.44871C17.0493 3.41686 17.2772 3.27447 17.733 2.98969C19.7296 1.74242 20.6068 2.02823 20.6068 2.02823C21.0313 3.11619 21.0496 4.32292 20.7668 5.45932C20.6973 5.73852 20.6625 5.87813 20.6825 5.9851C20.7025 6.09207 20.7856 6.21019 20.9519 6.4464C21.6199 7.39556 22 8.48611 22 9.64606C22 14.1077 19.8661 15.4528 16.8229 16.2894C16.4555 16.3904 16.3162 16.8476 16.5196 17.1699C16.8161 17.6396 17 18.1596 17 18.7579V22"
-                  stroke="#141B34" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-              </svg></span> GitHub</a>
-          <a class="card contact-card" href="https://leetcode.com/u/spidy90180/" target="_blank"
-            rel="noopener"><span><img width="24" height="24"
-                src="https://img.icons8.com/external-tal-revivo-shadow-tal-revivo/24/external-level-up-your-coding-skills-and-quickly-land-a-job-logo-shadow-tal-revivo.png"
-                alt="external-level-up-your-coding-skills-and-quickly-land-a-job-logo-shadow-tal-revivo" /></span>
-            LeetCode</a>
-          <a class="card contact-card" href="https://www.kaggle.com/yashkumarroy" target="_blank"
-            rel="noopener"><span><img width="24" height="24"
-                src="https://img.icons8.com/external-tal-revivo-shadow-tal-revivo/24/external-kaggle-an-online-community-of-data-scientists-and-machine-learners-owned-by-google-logo-shadow-tal-revivo.png"
-                alt="external-kaggle-an-online-community-of-data-scientists-and-machine-learners-owned-by-google-logo-shadow-tal-revivo" /></span>
-            Kaggle</a>
-          <a class="card contact-card" href="https://unsplash.com/@yash-kumar-roy" target="_blank"
-            rel="noopener"><span>📷</span> Unsplash</a>
-          <a class="card contact-card" href="https://www.linkedin.com/in/yashkumarroy/" target="_blank"
-            rel="noopener"><span>in</span> LinkedIn</a>
-          <a class="card contact-card" href="https://www.instagram.com/yashkumarroy/" target="_blank"
-            rel="noopener"><span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                class="bi bi-instagram" viewBox="0 0 16 16">
-                <path
-                  d="M8 0C5.829 0 5.556.01 4.703.048 3.85.088 3.269.222 2.76.42a3.9 3.9 0 0 0-1.417.923A3.9 3.9 0 0 0 .42 2.76C.222 3.268.087 3.85.048 4.7.01 5.555 0 5.827 0 8.001c0 2.172.01 2.444.048 3.297.04.852.174 1.433.372 1.942.205.526.478.972.923 1.417.444.445.89.719 1.416.923.51.198 1.09.333 1.942.372C5.555 15.99 5.827 16 8 16s2.444-.01 3.298-.048c.851-.04 1.434-.174 1.943-.372a3.9 3.9 0 0 0 1.416-.923c.445-.445.718-.891.923-1.417.197-.509.332-1.09.372-1.942C15.99 10.445 16 10.173 16 8s-.01-2.445-.048-3.299c-.04-.851-.175-1.433-.372-1.941a3.9 3.9 0 0 0-.923-1.417A3.9 3.9 0 0 0 13.24.42c-.51-.198-1.092-.333-1.943-.372C10.443.01 10.172 0 7.998 0zm-.717 1.442h.718c2.136 0 2.389.007 3.232.046.78.035 1.204.166 1.486.275.373.145.64.319.92.599s.453.546.598.92c.11.281.24.705.275 1.485.039.843.047 1.096.047 3.231s-.008 2.389-.047 3.232c-.035.78-.166 1.203-.275 1.485a2.5 2.5 0 0 1-.599.919c-.28.28-.546.453-.92.598-.28.11-.704.24-1.485.276-.843.038-1.096.047-3.232.047s-2.39-.009-3.233-.047c-.78-.036-1.203-.166-1.485-.276a2.5 2.5 0 0 1-.92-.598 2.5 2.5 0 0 1-.6-.92c-.109-.281-.24-.705-.275-1.485-.038-.843-.046-1.096-.046-3.233s.008-2.388.046-3.231c.036-.78.166-1.204.276-1.486.145-.373.319-.64.599-.92s.546-.453.92-.598c.282-.11.705-.24 1.485-.276.738-.034 1.024-.044 2.515-.045zm4.988 1.328a.96.96 0 1 0 0 1.92.96.96 0 0 0 0-1.92m-4.27 1.122a4.109 4.109 0 1 0 0 8.217 4.109 4.109 0 0 0 0-8.217m0 1.441a2.667 2.667 0 1 1 0 5.334 2.667 2.667 0 0 1 0-5.334" />
-              </svg></span> instagram</a>
-        </div>
-      </div>
-    </section>
   </main>
 
   <footer class="site-footer">
@@ -677,21 +543,47 @@
         <a class="brand" href="#home"><span>Yash</span></a>
         <p class="muted">© <span id="year"></span> | Built with Love.</p>
       </div>
+
+      <div class="footer-socials">
+        <h4>Connect</h4>
+        <div class="social-icons">
+          <a href="https://www.linkedin.com/in/yashkumarroy/" target="_blank" rel="noopener" aria-label="LinkedIn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
+            </svg>
+          </a>
+          <a href="https://github.com/yash-kumar-roy" target="_blank" rel="noopener" aria-label="GitHub">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
+            </svg>
+          </a>
+          <a href="https://www.kaggle.com/yashkumarroy" target="_blank" rel="noopener" aria-label="Kaggle">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M20.693 21.977h-5.796l-4.336-6.205 1.953-1.906 8.179 8.111zm-10.59-10.22l-3.76-3.603v13.823h-5.66v-20.023h5.66v7.944l6.98-7.944h6.22l-7.46 7.923 1.89 1.843z" />
+            </svg>
+          </a>
+          <a href="mailto:yashkumarroy164@gmail.com" aria-label="Email">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M0 3v18h24v-18h-24zm21.518 2l-9.518 7.713-9.518-7.713h19.036zm-19.518 14v-11.817l10 8.104 10-8.104v11.817h-20z" />
+            </svg>
+          </a>
+        </div>
+      </div>
+
       <nav aria-label="Footer">
         <ul class="footer-links">
           <li><a href="#featured">Case Studies</a></li>
-          <li><a href="#projects">Project</a></li>
+          <li><a href="#projects">Projects</a></li>
           <li><a href="#blog">Blog</a></li>
           <li><a href="#resume">Resume</a></li>
         </ul>
       </nav>
-
-      <!-- Newsletter removed as requested -->
-      <div></div>
     </div>
   </footer>
-
-  <a href="#contact" class="fab-contact" aria-label="Contact Yash">Hire me</a>
 
   <!-- Modal -->
   <div class="modal" id="caseModal" role="dialog" aria-modal="true" aria-labelledby="caseTitle" hidden>
@@ -708,8 +600,6 @@
     </div>
   </div>
 
-  <!-- EmailJS -->
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <script defer src="script.js"></script>
 </body>
 
