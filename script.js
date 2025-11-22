@@ -70,9 +70,17 @@ animated.forEach(el => io.observe(el));
 
   function close() { modal.hidden = true; body.innerHTML = ''; }
   document.addEventListener('click', (e) => {
+    console.log('Click detected on:', e.target);
     const openBtn = e.target.closest('[data-open-case]');
     if (openBtn) {
-      const data = JSON.parse(openBtn.getAttribute('data-open-case'));
+      console.log('Open button found:', openBtn);
+      let data;
+      try {
+        data = JSON.parse(openBtn.getAttribute('data-open-case'));
+      } catch (err) {
+        console.error('Failed to parse case study data:', err);
+        return;
+      }
       title.textContent = data.title || 'Case Study';
       body.innerHTML = `
         <article class="post">
@@ -95,7 +103,7 @@ animated.forEach(el => io.observe(el));
   function escapeHTML(s) { return String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])); }
 })();
 
-/* Blog: simple Markdown → HTML (composer removed; still renders a seed post) */
+/* Blog: simple Markdown → HTML */
 function mdToHtml(md) {
   let lines = md.replace(/\r\n?/g, '\n').split('\n');
   let html = '', inList = false;
@@ -110,12 +118,37 @@ function mdToHtml(md) {
   function inline(s) { return s.replace(/`([^`]+)`/g, (_, c) => `<code>${escapeHTML(c)}</code>`).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/\*([^*]+)\*/g, '<em>$1</em>').replace(/_([^_]+)_/g, '<em>$1</em>').replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>'); }
   function escapeHTML(s) { return String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])); }
 }
-const defaultPosts = [{
-  title: 'Evaluating Classification Models', slug: 'evaluating-classifiers', md: `# Evaluating Models
-When accuracy isn't enough, try **AUC**, *log-loss*, and **Lift@K**.
-- Calibrate probabilities for ranking quality
-- Prefer stratified CV for imbalanced sets
-See also: [scikit-learn metrics](https://scikit-learn.org/stable/modules/model_evaluation.html).`}];
+
+const defaultPosts = [
+  {
+    title: 'The Future of AutoML',
+    slug: 'automl-future',
+    md: `# The Future of AutoML
+AutoML is democratizing data science, but does it replace the expert?
+- **Efficiency**: Rapid prototyping of baseline models.
+- **Customization**: Why domain knowledge still rules.
+- **Tools**: A look at TPOT, H2O, and AutoKeras.`
+  },
+  {
+    title: 'Scaling ML Pipelines',
+    slug: 'scaling-ml',
+    md: `# Scaling ML Pipelines
+Moving from notebook to production requires a shift in mindset.
+- **Reproducibility**: Docker containers and versioning.
+- **Monitoring**: Drift detection with evidently.ai.
+- **Orchestration**: Airflow vs. Prefect.`
+  },
+  {
+    title: 'Understanding Transformers',
+    slug: 'transformers',
+    md: `# Understanding Transformers
+Attention is all you need, but how does it actually work?
+- **Self-Attention**: The core mechanism explained.
+- **Positional Encoding**: Giving order to sequences.
+- **Applications**: Beyond NLP—Vision Transformers (ViT).`
+  }
+];
+
 (function blogInit() {
   const grid = $('#blogGrid'); if (!grid) return;
   grid.innerHTML = defaultPosts.map(p => `
@@ -132,66 +165,6 @@ function track(eventName, params = {}) {
   if (window.gtag) gtag('event', eventName, params);
   if (window.plausible) plausible(eventName, { props: params });
 }
-
-/* -------- Forms validation + EmailJS with graceful fallback -------- */
-function validateField(field) {
-  const error = field.parentElement.querySelector('.error');
-  let msg = '';
-  if (field.validity.valueMissing) msg = 'This field is required.';
-  else if (field.type === 'email' && field.validity.typeMismatch) msg = 'Please enter a valid email.';
-  error.textContent = msg; return !msg;
-}
-function wireForm(form, onOk) {
-  if (!form) return;
-  const fields = $$('input, textarea', form);
-  fields.forEach(f => f.addEventListener('blur', () => validateField(f)));
-  form.addEventListener('submit', async e => {
-    e.preventDefault();
-    const ok = fields.every(validateField);
-    if (!ok) return;
-    await onOk?.();
-  });
-}
-const contactForm = $('#contactForm');
-wireForm(contactForm, async () => {
-  const success = $('.form-success', contactForm);
-  const fail = $('.form-fail', contactForm);
-
-  const name = contactForm.name.value.trim();
-  const email = contactForm.email.value.trim();
-  const msg = contactForm.message.value.trim();
-
-  // Change these three to your actual EmailJS values to enable direct sending
-  const EMAILJS_PUBLIC_KEY = 'BdYe8tQLJJ9D6NYym';
-  const EMAILJS_SERVICE_ID = 'service_naou89f';
-  const EMAILJS_TEMPLATE_ID = 'template_9upsyhp';
-
-  let sent = false;
-  try {
-    if (window.emailjs) {
-      emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
-      await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-        from_name: name, reply_to: email, message: msg
-      });
-      sent = true;
-      track('contact_submit', { method: 'emailjs' });
-    }
-  } catch (err) {
-    console.error('EmailJS error:', err);
-  }
-
-  if (sent) {
-    success.hidden = false; fail.hidden = true; contactForm.reset();
-    setTimeout(() => success.hidden = true, 5000);
-  } else {
-    // Fallback: open user's mail app prefilled
-    const subject = encodeURIComponent('Portfolio contact');
-    const body = encodeURIComponent(`Name: ${name}\nEmail: ${email}\n\n${msg}`);
-    // window.location.href = `mailto:yashkumarroy164@gmail.com?subject=${subject}&body=${body}`;
-    fail.hidden = false; success.hidden = true;
-    track('contact_submit', { method: 'mailto_fallback' });
-  }
-});
 
 /* Mark resume downloads as events */
 document.addEventListener('click', e => {
