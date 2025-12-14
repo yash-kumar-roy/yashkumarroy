@@ -125,27 +125,27 @@ const defaultPosts = [
     slug: 'automl-future',
     md: `# The Future of AutoML
 AutoML is democratizing data science, but does it replace the expert?
-- **Efficiency**: Rapid prototyping of baseline models.
-- **Customization**: Why domain knowledge still rules.
-- **Tools**: A look at TPOT, H2O, and AutoKeras.`
+- "Efficiency": Rapid prototyping of baseline models.
+- "Customization": Why domain knowledge still rules.
+- "Tools": A look at TPOT, H2O, and AutoKeras.`
   },
   {
     title: 'Scaling ML Pipelines',
     slug: 'scaling-ml',
     md: `# Scaling ML Pipelines
 Moving from notebook to production requires a shift in mindset.
-- **Reproducibility**: Docker containers and versioning.
-- **Monitoring**: Drift detection with evidently.ai.
-- **Orchestration**: Airflow vs. Prefect.`
+- "Reproducibility": Docker containers and versioning.
+- "Monitoring": Drift detection with evidently.ai.
+- "Orchestration": Airflow vs. Prefect.`
   },
   {
     title: 'Understanding Transformers',
     slug: 'transformers',
     md: `# Understanding Transformers
 Attention is all you need, but how does it actually work?
-- **Self-Attention**: The core mechanism explained.
-- **Positional Encoding**: Giving order to sequences.
-- **Applications**: Beyond NLP—Vision Transformers (ViT).`
+- "Self-Attention": The core mechanism explained.
+- "Positional Encoding": Giving order to sequences.
+- "Applications": Beyond NLP—Vision Transformers (ViT).`
   }
 ];
 
@@ -180,7 +180,7 @@ $('#year').textContent = String(new Date().getFullYear());
   const textElement = document.getElementById('typing-text');
   if (!textElement) return;
 
-  const roles = ["Data Science Associate", "Machine Learning Engineer", "Web Developer", "Python Enthusiast"];
+  const roles = ["Data Science Associate", "Machine Learning Engineer", "AI Engineer", "Python Enthusiast", "ML Engineer"];
   let roleIndex = 0;
   let charIndex = 0;
   let isDeleting = false;
@@ -213,3 +213,214 @@ $('#year').textContent = String(new Date().getFullYear());
 
   type();
 })();
+
+/* Contact Form Handler */
+(function contactFormInit() {
+  const form = document.getElementById('contact-form');
+  const status = document.getElementById('contact-status');
+
+  if (!form) return;
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    if (form.getAttribute('action').includes('YOUR_FORM_ID')) {
+      status.textContent = "Please configure your Formspree ID in the HTML.";
+      status.className = "status-msg error";
+      alert("Formspree ID not configured. Please update the form's action attribute.");
+      return; // Exit early if Formspree ID is not configured
+    }
+
+    status.textContent = "Sending...";
+    status.className = "status-msg";
+
+    const data = new FormData(event.target);
+    try {
+      const response = await fetch(event.target.action, {
+        method: form.method,
+        body: data,
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        status.textContent = "Thanks! Message sent successfully.";
+        status.className = "status-msg success";
+        form.reset();
+      } else {
+        const jsonData = await response.json();
+        let errorMessage = "Oops! There was a problem submitting your form";
+        if (Object.hasOwn(jsonData, 'errors')) {
+          errorMessage = jsonData.errors.map(error => error.message).join(", ");
+        }
+        status.textContent = errorMessage;
+        status.className = "status-msg error";
+        alert(`Submission Error: ${errorMessage}`);
+      }
+    } catch (error) {
+      status.textContent = "Oops! There was a problem submitting your form";
+      status.className = "status-msg error";
+      alert(`Network Error: ${error.message}`);
+    }
+  }
+
+  form.addEventListener("submit", handleSubmit);
+})();
+
+/* =========================================
+   Chatbot Integration
+   ========================================= */
+(function () {
+  const toggleBtn = document.getElementById('chatToggle');
+  const chatWindow = document.getElementById('chatWindow');
+  const closeBtn = document.getElementById('chatClose');
+  const chatForm = document.getElementById('chatForm');
+  const chatInput = document.getElementById('chatInput');
+  const messagesContainer = document.getElementById('chatMessages');
+  const suggestionChips = document.querySelectorAll('.suggestions .chip');
+
+  // Toggle Chat
+  function toggleChat() {
+    const isHidden = chatWindow.hidden;
+    if (isHidden) {
+      chatWindow.hidden = false;
+      chatInput.focus();
+    } else {
+      chatWindow.hidden = true;
+    }
+  }
+
+  if (toggleBtn) toggleBtn.addEventListener('click', toggleChat);
+  if (closeBtn) closeBtn.addEventListener('click', toggleChat);
+
+  // Quick Questions
+  if (suggestionChips) {
+    suggestionChips.forEach(chip => {
+      chip.addEventListener('click', () => {
+        const text = chip.textContent;
+        chatInput.value = text;
+        handleSubmit({ preventDefault: () => { } });
+      });
+    });
+  }
+
+  // System Prompt (Context about Yash)
+  const systemPrompt = `
+  You are an AI assistant for Yash Kumar Roy's portfolio website.
+  Your goal is to answer questions about functionality, skills, and projects based on this context:
+
+  **Profile**: Data Science Associate & Developer. 2+ years experience.
+  **Focus**: ML, Analytics, Modern Web Apps.
+  **Contact**: Email via form, LinkedIn (https://linkedin.com/in/yash-kumar-roy), Github (https://github.com/yash-kumar-roy).
+
+  **Skills**:
+  - Languages: Python, JavaScript/TypeScript, SQL, HTML/CSS.
+  - ML/AI: TensorFlow, Keras, Scikit-learn, Pandas, NumPy, OpenCV.
+  - Web: React, Node.js, Streamlit, Flask.
+  - Tools: Git, Docker, SAW, AWS.
+
+  **Featured Projects**:
+  1. **Telecom Churn Prediction**: ML model (AUC 0.89) to identify at-risk customers. Used SMOTE, Streamlit.
+  2. **Medical Cost Prediction**: Regression model (XGBoost) for insurance premiums. Used SHAP for explainability.
+  3. **Style Transfer (GAN)**: Custom GAN for artistic photo styling. WGAN-GP, Instance Norm.
+
+  **Tone**: Professional, enthusiastic, helpful. Keep answers concise (under 3 sentences usually).
+  If asked about something not in the portfolio, say you don't have that info but suggest contacting Yash.
+  `;
+
+  // Add Message to UI
+  function addMessage(text, sender) {
+    const div = document.createElement('div');
+    div.className = `message ${sender}`;
+    div.innerHTML = `<p>${text}</p>`;
+    messagesContainer.appendChild(div);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  }
+
+  // Handle Submission
+  async function handleSubmit(e) {
+    e && e.preventDefault();
+    const text = chatInput.value.trim();
+    if (!text) return;
+
+    // User Message
+    addMessage(text, 'user');
+    chatInput.value = '';
+
+    // Typing Indicator
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'message bot typing';
+    typingDiv.innerHTML = `<p>Thinking...</p>`;
+    messagesContainer.appendChild(typingDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+    try {
+      let apiKey = (typeof CONFIG !== 'undefined' && CONFIG.OPENAI_API_KEY) ? CONFIG.OPENAI_API_KEY : '';
+
+      // Fallback: Try fetching .env if config.js missing/empty
+      if (!apiKey || apiKey === 'YOUR_OPENAI_API_KEY') {
+        try {
+          const envResponse = await fetch('.env');
+          if (envResponse.ok) {
+            const envText = await envResponse.text();
+            const match = envText.match(/OPENAI_API_KEY=(.*)/);
+            if (match) {
+              apiKey = match[1].trim();
+            }
+          }
+        } catch (err) {
+          console.warn("Could not load .env file", err);
+        }
+      }
+
+      if (!apiKey || apiKey === 'YOUR_OPENAI_API_KEY') {
+        throw new Error("Please Configure API Key in .env or config.js");
+      }
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: text }
+          ],
+          max_tokens: 150
+        })
+      });
+
+      const data = await response.json();
+
+      // Remove Typing
+      if (messagesContainer.contains(typingDiv)) {
+        messagesContainer.removeChild(typingDiv);
+      }
+
+      if (data.error) {
+        console.error("OpenAI Error:", data.error);
+        addMessage(`Error: ${data.error.message}`, 'bot');
+        alert(`OpenAI Error: ${data.error.message}`);
+      } else {
+        const reply = data.choices[0].message.content;
+        addMessage(reply, 'bot');
+      }
+
+    } catch (err) {
+      console.error("Chatbot Error:", err);
+      if (messagesContainer.contains(typingDiv)) {
+        messagesContainer.removeChild(typingDiv);
+      }
+      addMessage(`System: ${err.message}`, 'bot');
+      // Alert the user for visibility
+      alert(`Chatbot Error: ${err.message}`);
+    }
+  }
+
+  if (chatForm) chatForm.addEventListener('submit', handleSubmit);
+
+})();
+

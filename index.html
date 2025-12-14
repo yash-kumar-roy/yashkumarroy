@@ -30,8 +30,7 @@
     src="https://plausible.io/js/script.js"></script>
 
   <link rel="preload" href="styles.css" as="style" />
-  <link rel="stylesheet" href="styles.css" />
-
+  <link rel="stylesheet" href="styles.css?v=2">
   <link rel="canonical" href="https://yash-kumar-roy.github.io/yashkumarroy/" />
   <link rel="icon" href="assets/favicon.ico">
   <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
@@ -112,6 +111,7 @@
           <li><a href="#blog">Blog</a></li>
           <li><a href="#resume">Resume</a></li>
           <li><a href="#timeline">Timeline</a></li>
+          <li><a href="#contact">Contact</a></li>
           <li><a class="btn btn--sm btn--ghost" href="resume.pdf" download>Download CV</a></li>
           <li>
             <button class="theme-toggle" type="button" data-theme-toggle aria-label="Toggle dark mode">
@@ -224,10 +224,10 @@
                 target="_blank" rel="noopener">GitHub</a>
               <button type="button" class="btn btn--ghost" data-open-case='{
                 "title":"Telecom Churn Prediction",
-                "problem":"**Situation**: Telecom provider facing high customer churn rates.\\n**Task**: Build a predictive model to identify at-risk customers and suggest retention strategies.",
+                "problem":"\"Situation\": Telecom provider facing high customer churn rates. \"Task\": Build a predictive model to identify at-risk customers and suggest retention strategies.",
                 "tech":["Python","scikit-learn","Pandas","Streamlit","Machine Learning"],
                 "challenges":["Class imbalance (85/15 split)","Feature leakage risk","Probability calibration for business use"],
-                "solutions":["**Action**: Implemented SMOTE for balance, time-based splitting to prevent leakage, and CalibratedClassifierCV for accurate probabilities.", "**Result**: Achieved AUC of 0.89 and a Lift@10 of 2.1x, meaning the top 10% of predicted risky users contained 2.1x more actual churners than random selection."],
+                "solutions":["\"Action\": Implemented SMOTE for balance, time-based splitting to prevent leakage, and CalibratedClassifierCV for accurate probabilities.", "\"Result\": Achieved AUC of 0.89 and a Lift@10 of 2.1x, meaning the top 10% of predicted risky users contained 2.1x more actual churners than random selection."],
                 "achievements":["Deployed interactive Streamlit app for real-time \"what-if\" analysis."]
               }'>Read More</button>
             </div>
@@ -251,10 +251,10 @@
                 rel="noopener">GitHub</a>
               <button type="button" class="btn btn--ghost" data-open-case='{
                 "title":"Medical Cost Prediction",
-                "problem":"**Situation**: Insurance premiums were inconsistent and opaque.\\n**Task**: Develop a regression model to estimate charges fairly based on patient data.",
+                "problem":"\"Situation\": Insurance premiums were inconsistent and opaque. \"Task\": Develop a regression model to estimate charges fairly based on patient data.",
                 "tech":["Python","scikit-learn","Pandas","SHAP","Streamlit"],
                 "challenges":["Non-linear relationships (BMI/Smoking interaction)","High-value outliers","Need for explainability"],
-                "solutions":["**Action**: Engineered interaction features, used XGBoost with ElasticNet regularization, and integrated SHAP values for local explainability.", "**Result**: Reduced MAE to $1183 (R²: 0.78) and provided clear, per-patient cost drivers."],
+                "solutions":["\"Action\": Engineered interaction features, used XGBoost with ElasticNet regularization, and integrated SHAP values for local explainability.", "\"Result\": Reduced MAE to $1183 (R²: 0.78) and provided clear, per-patient cost drivers."],
                 "achievements":["Created an explainable UI where users can see exactly why their premium is high or low."]
               }'>Read More</button>
             </div>
@@ -274,10 +274,10 @@
                 rel="noopener">GitHub</a>
               <button type="button" class="btn btn--ghost" data-open-case='{
                 "title":"Style Transfer (GAN)",
-                "problem":"**Situation**: Artistic style transfer often lacks consistency.\\n**Task**: Build a custom GAN to apply artistic styles to photos without paired training data.",
+                "problem":"\"Situation\": Artistic style transfer often lacks consistency. \"Task\": Build a custom GAN to apply artistic styles to photos without paired training data.",
                 "tech":["TensorFlow","Keras","Python"],
                 "challenges":["Training instability (mode collapse)","Preserving content structure","Perceptual quality metrics"],
-                "solutions":["**Action**: Implemented Wasserstein loss with Gradient Penalty (WGAN-GP) and Instance Normalization. Used LPIPS metric for validation.", "**Result**: Stabilized training up to 120k iterations and improved FID score from 32 to 24."],
+                "solutions":["\"Action\": Implemented Wasserstein loss with Gradient Penalty (WGAN-GP) and Instance Normalization. Used LPIPS metric for validation.", "\"Result\": Stabilized training up to 120k iterations and improved FID score from 32 to 24."],
                 "achievements":["Generated a gallery of high-resolution stylized images."]
               }'>Read More</button>
             </div>
@@ -472,11 +472,18 @@
 
           <article class="card">
             <h3 style="margin-bottom:.6rem">Summary</h3>
-            <ul class="highlights">
-              <li>Data Science Associate & Developer</li>
-              <li>Focus: ML, analytics, and modern web apps</li>
-              <li>Stack: Python, JS/TS, React, Node, scikit‑learn, TensorFlow, Pandas</li>
-              <li>Deploys: Streamlit, static web, serverless</li>
+            <p>
+              I am a <strong>Data Science Associate & Developer</strong> with a passion for bridging the gap between
+              complex analytics and intuitive engineering. I specialize in building end-to-end data solutions — from
+              training predictive models in Python to deploying them as polished, user-friendly web applications.
+            </p>
+            <ul class="highlights" style="margin-top:1rem">
+              <li><strong>Experience:</strong> 2+ years in ML, predictive modeling, and full-stack development.</li>
+              <li><strong>Core Stack:</strong> Python, Generative AI, Deep Learning, Data Science, and machine learning.
+              </li>
+              <li><strong>Focus:</strong> Creating impact-driven tools that turn raw data into decisions.</li>
+              <li><strong>Deployment:</strong> Proficient in cloud deployment, serverless architectures, and CI/CD
+                pipelines.</li>
             </ul>
           </article>
         </div>
@@ -533,6 +540,42 @@
             </div>
           </li>
         </ol>
+      </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="contact" class="section">
+      <div class="container">
+        <header class="section-head">
+          <h2>Get in Touch</h2>
+          <p>Have a project in mind or just want to say hi? Send me a message.</p>
+        </header>
+
+        <div class="contact-layout">
+          <form id="contact-form" action="https://formspree.io/f/xzznwpwr" method="POST" class="contact-form">
+            <div class="form-group">
+              <label for="name">Name</label>
+              <input type="text" id="name" name="name" placeholder="Your Name" required>
+            </div>
+            <div class="form-group">
+              <label for="email">Email</label>
+              <input type="email" id="email" name="email" placeholder="example@gmail.com" required>
+            </div>
+            <div class="form-group">
+              <label for="phone">Phone (Optional)</label>
+              <input type="tel" id="phone" name="phone" placeholder="+91 99999 99999">
+            </div>
+            <div class="form-group full-width">
+              <label for="message">Message</label>
+              <textarea id="message" name="message" rows="5" placeholder="Tell me about your project..."
+                required></textarea>
+            </div>
+            <div class="form-group full-width">
+              <button type="submit" class="btn btn--primary" style="width: 100%;">Send Message</button>
+            </div>
+            <p id="contact-status" class="status-msg"></p>
+          </form>
+        </div>
       </div>
     </section>
   </main>
@@ -600,7 +643,44 @@
     </div>
   </div>
 
+  <script src="config.js"></script>
   <script defer src="script.js"></script>
+
+  <!-- Chatbot -->
+  <div class="chatbot-container">
+    <button class="chat-toggle" id="chatToggle" aria-label="Open Chat">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+      </svg>
+    </button>
+    <div class="chat-window" id="chatWindow" hidden>
+      <header class="chat-header">
+        <h4>AI Assistant</h4>
+        <button class="icon-btn" id="chatClose" aria-label="Close Chat">✕</button>
+      </header>
+      <div class="chat-messages" id="chatMessages">
+        <div class="message bot">
+          <p>Hi! I'm Yash's AI assistant. Ask me anything about his projects, skills, or experience!</p>
+          <div class="suggestions">
+            <button class="chip">What are your skills?</button>
+            <button class="chip">Show me a project</button>
+            <button class="chip">Building this chatbot</button>
+          </div>
+        </div>
+      </div>
+      <form class="chat-input-area" id="chatForm">
+        <input type="text" id="chatInput" placeholder="Ask a question..." autocomplete="off">
+        <button type="submit" class="icon-btn send-btn" aria-label="Send">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
+      </form>
+    </div>
+  </div>
 </body>
 
 </html>
