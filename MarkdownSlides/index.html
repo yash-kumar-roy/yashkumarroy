@@ -11,45 +11,83 @@
   }
   [data-theme='light']{ --bg:#f6f7fb; --panel:#ffffff; --muted:#586069; --accent:#0ea5a4; --accent-2:#7c3aed; --text:#0b1220; --card:#ffffff }
 
+  *{box-sizing:border-box}
   html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial;background:var(--bg);color:var(--text)}
-  .app{min-height:100vh;display:flex;flex-direction:column;gap:12px;padding:16px}
+  .app{min-height:100vh;display:flex;flex-direction:column;gap:12px;padding:16px;overflow-x:hidden}
 
-  header{display:flex;align-items:center;gap:12px;max-width:1200px;margin:0 auto;width:100%}
+  header{display:flex;align-items:center;flex-wrap:wrap;gap:12px;max-width:1200px;margin:0 auto;width:100%}
+  header > div:first-child{flex:1 1 280px;min-width:0}
   h1{margin:0;font-size:18px}
   .lead{color:var(--muted);font-size:13px}
-  .controls{margin-left:auto;display:flex;gap:8px}
-  .btn{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px 10px;border-radius:8px;color:var(--muted);cursor:pointer}
+  .controls{margin-left:auto;display:flex;flex-wrap:wrap;gap:8px}
+  .btn{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px 10px;border-radius:8px;color:var(--muted);cursor:pointer;font:inherit;font-size:13px}
+  [data-theme='light'] .btn{border-color:rgba(11,18,32,0.14)}
+  .btn:hover{color:var(--text)}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .btn:focus-visible,.slide-stage:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   .btn.primary{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#07202a;border:0;font-weight:700}
 
-  .main{display:grid;grid-template-columns:1fr 560px;gap:16px;max-width:1200px;margin:0 auto;width:100%;align-items:start}
-  .editor{display:flex;flex-direction:column;gap:8px}
-  textarea{width:100%;min-height:60vh;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:var(--card);color:var(--text);font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', 'Courier New', monospace;font-size:14px}
+  .main{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,560px);gap:16px;max-width:1200px;margin:0 auto;width:100%;align-items:start}
+  .editor{display:flex;flex-direction:column;gap:8px;min-width:0}
+  .editor > div{flex-wrap:wrap;gap:4px 12px}
+  textarea{display:block;resize:vertical;width:100%;min-height:60vh;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:var(--card);color:var(--text);font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', 'Courier New', monospace;font-size:14px}
   .small{font-size:13px;color:var(--muted)}
 
-  .preview-wrap{display:flex;flex-direction:column;gap:8px}
+  .preview-wrap{display:flex;flex-direction:column;gap:8px;min-width:0}
   .toolbar{display:flex;align-items:center;gap:8px}
-  .slide-stage{background:var(--surface);border-radius:12px;padding:18px;min-height:60vh;border:1px solid rgba(255,255,255,0.04);position:relative;display:flex;align-items:center;justify-content:center}
+  .slide-stage{background:var(--surface);border-radius:12px;padding:18px;min-height:60vh;border:1px solid rgba(255,255,255,0.04);position:relative;display:flex;align-items:center;justify-content:center;touch-action:pan-y}
 
-  .slide{width:100%;height:100%;max-width:960px;max-height:540px;background:linear-gradient(180deg,#fff,#f7f9fb);color:#0b1220;padding:36px;border-radius:12px;box-shadow:0 16px 40px rgba(2,6,23,0.6);overflow:hidden;display:none;flex-direction:column}
+  .slide{width:100%;max-width:960px;aspect-ratio:16/9;min-width:0;background:linear-gradient(180deg,#fff,#f7f9fb);color:#0b1220;padding:36px;border-radius:12px;box-shadow:0 16px 40px rgba(2,6,23,0.6);display:none;flex-direction:column;overflow-wrap:anywhere}
   .slide.dark{background:linear-gradient(180deg,#071227,#04101a);color:var(--text);box-shadow:none}
   .slide.visible{display:flex}
   .slide h1{font-size:32px;margin:0 0 6px 0}
   .slide h2{font-size:26px;margin:0 0 6px 0}
   .slide p{font-size:18px;line-height:1.4;margin:6px 0}
-  .slide ul{margin:8px 0 0 18px}
+  .slide h3{font-size:22px;margin:0 0 6px 0}
+  .slide h4,.slide h5,.slide h6{font-size:18px;margin:0 0 6px 0}
+  .slide ul,.slide ol{margin:8px 0 0 18px;padding-left:18px}
+  .slide li{font-size:18px;line-height:1.4;margin:4px 0}
+  .slide a{color:var(--accent)}
+  .slide img{max-width:100%;height:auto;border-radius:6px}
+  .slide pre{max-width:100%;overflow:auto;background:rgba(0,0,0,0.06);padding:10px 12px;border-radius:8px;margin:8px 0}
+  .slide pre code{background:none;padding:0}
+  .slide blockquote{margin:8px 0;padding:4px 14px;border-left:3px solid var(--accent);opacity:.9}
+  .slide.dark code{background:rgba(255,255,255,0.08)}
   .slide code{background:rgba(0,0,0,0.04);padding:2px 6px;border-radius:6px;font-family:ui-monospace, SFMono-Regular, Menlo, Monaco}
 
-  .footer{display:flex;align-items:center;justify-content:space-between;margin-top:6px}
+  .footer{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:6px}
+  .footer > .meta{min-width:0;flex-wrap:wrap}
   .progress{height:8px;background:rgba(255,255,255,0.04);border-radius:8px;overflow:hidden;width:100%;margin-left:12px}
   .progress > span{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));width:0%}
   .meta{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px}
 
-  .controls .toggle{display:inline-flex;align-items:center;gap:8px;padding:6px 8px;border-radius:999px;border:1px solid rgba(255,255,255,0.04)}
+  .controls .toggle{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px}
 
   /* full-screen stage tweaks */
-  .fullscreen .slide{max-width:1400px;max-height:800px;padding:48px}
+  .slide-stage:fullscreen{background:var(--bg);border-radius:0;border:0;padding:24px}
+  .fullscreen .slide-stage{background:var(--bg)}
+  .fullscreen .slide{max-width:min(1400px, calc((100vh - 48px) * 16 / 9));padding:48px}
+  .fullscreen .slide h1{font-size:48px}
+  .fullscreen .slide h2{font-size:38px}
+  .fullscreen .slide p,.fullscreen .slide li{font-size:26px}
+  /* CSS fallback when the Fullscreen API is unavailable (e.g. iframe without allowfullscreen) */
+  .slide-stage.pseudo-fs{position:fixed;inset:0;z-index:1000;min-height:0;border-radius:0;border:0;padding:24px}
+  .exit-present{display:none;position:absolute;top:10px;right:10px;z-index:2}
+  .fullscreen .exit-present{display:inline-block;background:var(--panel)}
 
-  @media (max-width:1000px){ .main{grid-template-columns:1fr} .preview-wrap{order:-1} textarea{min-height:40vh} }
+  @media (max-width:1000px){ .main{grid-template-columns:minmax(0,1fr)} .preview-wrap{order:-1} textarea{min-height:40vh} .slide-stage{min-height:0} }
+  @media (max-width:600px){
+    .app{padding:12px}
+    .controls{margin-left:0}
+    .slide-stage{padding:10px}
+    .slide{aspect-ratio:auto;min-height:200px;padding:18px}
+    .slide h1{font-size:24px} .slide h2{font-size:20px} .slide h3{font-size:18px}
+    .slide p,.slide li{font-size:15px}
+    .toolbar{flex-wrap:wrap}
+    .footer{flex-wrap:wrap}
+    .footer > div:last-child{width:100% !important}
+    .progress{margin-left:0}
+  }
 </style>
 </head>
 <body data-theme="dark">
@@ -62,7 +100,7 @@
     <div class="controls">
       <button id="loadSample" class="btn">Load Sample</button>
       <button id="fullscreenBtn" class="btn">⤢ Fullscreen</button>
-      <div class="toggle btn" id="themeToggle">Theme: <strong id="themeLabel">Dark</strong></div>
+      <button type="button" class="toggle btn" id="themeToggle" aria-label="Toggle theme">Theme: <strong id="themeLabel">Dark</strong></button>
       <button id="exportBtn" class="btn primary">Export HTML</button>
     </div>
   </header>
@@ -76,7 +114,7 @@
       <textarea id="mdInput" aria-label="Markdown input"></textarea>
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div class="small">Preview updates live as you type.</div>
-        <div class="small">Keyboard: ← → to navigate • Enter to present</div>
+        <div class="small">Keyboard: ← → to navigate • Enter (or Ctrl+Enter while typing) to present • Esc to exit</div>
       </div>
     </section>
 
@@ -88,7 +126,7 @@
         <button id="nextBtn" class="btn">Next ▶</button>
       </div>
 
-      <div id="stage" class="slide-stage" tabindex="0">
+      <div id="stage" class="slide-stage" tabindex="0" aria-label="Slide preview" aria-live="polite">
         <!-- slides injected here -->
       </div>
 
@@ -104,47 +142,73 @@
 
 <script>
 // --- Simple Markdown parser (supports headers, paragraphs, lists, code fences, inline bold/italic/code, links, images) ---
-function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// only allow safe URL schemes in links / images
+function safeUrl(u){
+  const url = String(u).trim();
+  if(/^(https?:|mailto:|tel:|data:image\/|#|\/|\.\/|\.\.\/)/i.test(url) || !/^[a-z][a-z0-9+.-]*:/i.test(url)) return url;
+  return '#';
+}
 
 function parseInline(text){
+  // text is already HTML-escaped. Protect code spans, images and links with placeholders
+  // so emphasis rules don't corrupt them (e.g. underscores in URLs or code).
+  const tokens = [];
+  const hold = html => '\u0000' + (tokens.push(html)-1) + '\u0000';
   // code
-  text = text.replace(/`([^`]+)`/g, (m, p1)=> '<code>'+escapeHtml(p1)+'</code>');
+  text = text.replace(/`([^`]+)`/g, (m, p1)=> hold('<code>'+p1+'</code>'));
+  // images ![alt](url) — must run before links
+  text = text.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, (m, alt, url)=> hold('<img src="'+safeUrl(url)+'" alt="'+alt+'">'));
+  // links [text](url)
+  text = text.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m, label, url)=> hold('\u0001'+safeUrl(url)+'\u0002') + label + hold('</a>'));
   // bold ** or __
   text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   text = text.replace(/__(.+?)__/g, '<strong>$1</strong>');
-  // italic * or _
+  // italic * or _ (underscore only at word boundaries so snake_case stays intact)
   text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
-  text = text.replace(/_(.+?)_/g, '<em>$1</em>');
-  // links [text](url)
-  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer noopener">$1</a>');
-  // images ![alt](url)
-  text = text.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%;height:auto;border-radius:6px">');
+  text = text.replace(/(^|[^\w])_(.+?)_(?!\w)/g, '$1<em>$2</em>');
+  // restore placeholders
+  text = text.replace(/\u0000(\d+)\u0000/g, (m, n)=> tokens[+n]);
+  text = text.replace(/\u0001([^\u0002]*)\u0002/g, (m, url)=> '<a href="'+url+'" target="_blank" rel="noreferrer noopener">');
   return text;
 }
 
 function blockParse(md){
   const lines = md.replace(/\r/g,'').split('\n');
   let i = 0; const out = [];
+  const isBlockStart = l => /^```/.test(l) || /^#{1,6}\s+/.test(l) || /^\s*[-*+]\s+/.test(l) || /^\s*\d+[.)]\s+/.test(l) || /^\s*>/.test(l);
   while(i<lines.length){
     const line = lines[i];
     // code fence
     if(/^```/.test(line)){
       const lang = line.slice(3).trim(); i++; let code='';
       while(i<lines.length && !/^```/.test(lines[i])){ code += lines[i++] + '\n'; }
-      i++; out.push({type:'code',lang,code:escapeHtml(code)}); continue;
+      i++; out.push({type:'code',lang,code:escapeHtml(code.replace(/\n$/,''))}); continue;
     }
     // header
-    const h = line.match(/^(#{1,3})\s+(.*)$/);
+    const h = line.match(/^(#{1,6})\s+(.*)$/);
     if(h){ out.push({type:'h',level:h[1].length, text:parseInline(escapeHtml(h[2]))}); i++; continue; }
-    // list
+    // unordered list
     if(/^\s*[-*+]\s+/.test(line)){
       const items=[]; while(i<lines.length && /^\s*[-*+]\s+/.test(lines[i])){ items.push(parseInline(escapeHtml(lines[i].replace(/^\s*[-*+]\s+/,'')))); i++; }
       out.push({type:'ul',items}); continue;
     }
+    // ordered list
+    if(/^\s*\d+[.)]\s+/.test(line)){
+      const start = parseInt(line, 10) || 1;
+      const items=[]; while(i<lines.length && /^\s*\d+[.)]\s+/.test(lines[i])){ items.push(parseInline(escapeHtml(lines[i].replace(/^\s*\d+[.)]\s+/,'')))); i++; }
+      out.push({type:'ol',items,start}); continue;
+    }
+    // blockquote
+    if(/^\s*>/.test(line)){
+      let q=[]; while(i<lines.length && /^\s*>/.test(lines[i])){ q.push(lines[i].replace(/^\s*>\s?/,'')); i++; }
+      out.push({type:'quote',text:parseInline(escapeHtml(q.join(' ')))}); continue;
+    }
     // empty
     if(line.trim()===''){ out.push({type:'br'}); i++; continue; }
-    // paragraph (collect until blank)
-    let p = line; i++; while(i<lines.length && lines[i].trim()!==''){ p += ' '+lines[i++]; }
+    // paragraph (collect until blank or another block)
+    let p = line; i++; while(i<lines.length && lines[i].trim()!=='' && !isBlockStart(lines[i])){ p += ' '+lines[i++]; }
     out.push({type:'p',text:parseInline(escapeHtml(p))});
   }
   return out;
@@ -152,10 +216,15 @@ function blockParse(md){
 
 function renderSlideHTML(md){
   const blocks = blockParse(md);
+  // drop leading/trailing spacers
+  while(blocks.length && blocks[0].type==='br') blocks.shift();
+  while(blocks.length && blocks[blocks.length-1].type==='br') blocks.pop();
   const html = blocks.map(b=>{
     if(b.type==='h') return `<h${b.level}>${b.text}</h${b.level}>`;
     if(b.type==='p') return `<p>${b.text}</p>`;
     if(b.type==='ul') return `<ul>${b.items.map(it=>'<li>'+it+'</li>').join('')}</ul>`;
+    if(b.type==='ol') return `<ol${b.start!==1?` start="${b.start}"`:''}>${b.items.map(it=>'<li>'+it+'</li>').join('')}</ol>`;
+    if(b.type==='quote') return `<blockquote>${b.text}</blockquote>`;
     if(b.type==='code') return `<pre><code>${b.code}</code></pre>`;
     if(b.type==='br') return '<div style="height:8px"></div>';
     return '';
@@ -182,23 +251,33 @@ let slides = [];
 let current = 0;
 let dark = true;
 
+const STORE_KEY = 'mdslides:v1';
+function storeGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function storeSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+
 function splitSlides(md){
   // split on a line that contains only --- (3 or more dashes)
-  const parts = md.split(/\n-{3,}\n/gi).map(s=>s.trim()).filter(s=>s.length>0);
+  const parts = md.replace(/\r/g,'').split(/^[ \t]*-{3,}[ \t]*$/m).map(s=>s.trim()).filter(s=>s.length>0);
   return parts.length? parts : [''];
 }
 
 function buildSlides(){
   const md = mdInput.value || '';
   slides = splitSlides(md);
+  if(current >= slides.length) current = slides.length-1;
+  if(current < 0) current = 0;
   // update DOM slides
   stage.innerHTML = '';
+  const exitBtn = document.createElement('button');
+  exitBtn.type='button'; exitBtn.className='btn exit-present'; exitBtn.textContent='✕ Exit';
+  exitBtn.addEventListener('click', (e)=>{ e.stopPropagation(); exitPresent(); });
+  stage.appendChild(exitBtn);
   slides.forEach((s, idx)=>{
     const div = document.createElement('div'); div.className = 'slide';
     if(dark) div.classList.add('dark');
     if(idx===current) div.classList.add('visible');
     div.setAttribute('data-idx', idx);
-    div.innerHTML = renderSlideHTML(s);
+    div.innerHTML = s ? renderSlideHTML(s) : '<p style="opacity:.6">Start typing Markdown to create slides…</p>';
     stage.appendChild(div);
   });
   updateMeta();
@@ -207,28 +286,43 @@ function buildSlides(){
 function updateMeta(){
   totalSlidesEl.textContent = slides.length;
   currentIdxEl.textContent = Math.min(current+1, slides.length);
-  const pct = slides.length? Math.round(((current)/ (slides.length-1||1)) * 100) : 0;
+  const pct = slides.length>1 ? Math.round((current / (slides.length-1)) * 100) : 100;
   progressBar.style.width = pct + '%';
+  prevBtn.disabled = current<=0;
+  nextBtn.disabled = current>=slides.length-1;
 }
 
 function showSlide(n){
-  if(n<0) n=0; if(n>=slides.length) n=slides.length-1;
+  if(n>=slides.length) n=slides.length-1; if(n<0) n=0;
   const prev = stage.querySelector('.slide.visible'); if(prev) prev.classList.remove('visible');
   current = n;
   const el = stage.querySelector('.slide[data-idx="'+n+'"]'); if(el) el.classList.add('visible');
   updateMeta();
 }
 
-// live preview
-mdInput.addEventListener('input', () => { buildSlides(); showSlide(0); deckTitle.textContent = extractTitle(slides[0]||'Untitled Deck'); });
+// live preview (keeps the current slide instead of jumping back to the first one)
+let saveTimer = null;
+mdInput.addEventListener('input', () => {
+  buildSlides();
+  deckTitle.textContent = extractTitle(slides[0]||'');
+  clearTimeout(saveTimer); saveTimer = setTimeout(()=> storeSet(STORE_KEY, mdInput.value), 300);
+});
 
-// keyboard nav
-window.addEventListener('keydown', (e)=>{
-  if(e.key==='ArrowRight' || e.key==='PageDown' || e.key===' '){ e.preventDefault(); nextSlide(); }
-  if(e.key==='ArrowLeft' || e.key==='PageUp'){ e.preventDefault(); prevSlide(); }
-  if(e.key==='Enter' && (e.metaKey || e.ctrlKey)){ toggleFullscreen(); }
-  if(e.key==='Home'){ showSlide(0); }
-  if(e.key==='End'){ showSlide(slides.length-1); }
+// keyboard nav — ignored while typing in the editor (so spaces / arrows work there)
+function isTypingTarget(t){
+  return t && (t.tagName==='TEXTAREA' || t.tagName==='INPUT' || t.tagName==='SELECT' || t.isContentEditable);
+}
+document.addEventListener('keydown', (e)=>{
+  if(e.key==='Enter' && (e.metaKey || e.ctrlKey)){ e.preventDefault(); toggleFullscreen(); return; }
+  if(isTypingTarget(e.target)) return;
+  if(e.altKey || e.ctrlKey || e.metaKey) return;
+  const onButton = e.target && e.target.tagName==='BUTTON';
+  if(e.key==='ArrowRight' || e.key==='PageDown' || (e.key===' ' && !onButton)){ e.preventDefault(); nextSlide(); }
+  else if(e.key==='ArrowLeft' || e.key==='PageUp'){ e.preventDefault(); prevSlide(); }
+  else if(e.key==='Enter' && !onButton){ e.preventDefault(); toggleFullscreen(); }
+  else if(e.key==='Escape' && document.body.classList.contains('fullscreen')){ exitPresent(); }
+  else if(e.key==='Home'){ e.preventDefault(); showSlide(0); }
+  else if(e.key==='End'){ e.preventDefault(); showSlide(slides.length-1); }
 });
 
 prevBtn.addEventListener('click', prevSlide);
@@ -237,40 +331,87 @@ nextBtn.addEventListener('click', nextSlide);
 function prevSlide(){ showSlide(Math.max(0, current-1)); }
 function nextSlide(){ showSlide(Math.min(slides.length-1, current+1)); }
 
+// swipe on touch screens
+let swipeStart = null;
+stage.addEventListener('pointerdown', (e)=>{ if(e.pointerType!=='mouse') swipeStart = {x:e.clientX, y:e.clientY}; });
+stage.addEventListener('pointerup', (e)=>{
+  if(!swipeStart) return;
+  const dx = e.clientX - swipeStart.x, dy = e.clientY - swipeStart.y; swipeStart = null;
+  if(Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)){ dx < 0 ? nextSlide() : prevSlide(); }
+});
+stage.addEventListener('pointercancel', ()=>{ swipeStart = null; });
+
 // theme toggle
 themeToggle.addEventListener('click', ()=>{ dark = !dark; document.body.setAttribute('data-theme', dark? 'dark':'light'); themeLabel.textContent = dark? 'Dark':'Light'; // update slides class
   stage.querySelectorAll('.slide').forEach(s=> s.classList.toggle('dark', dark)); });
 
-// fullscreen
-function toggleFullscreen(){ if(!document.fullscreenElement){ stage.requestFullscreen().then(()=> document.body.classList.add('fullscreen')).catch(()=>{}); } else { document.exitFullscreen().then(()=> document.body.classList.remove('fullscreen')).catch(()=>{}); } }
+// fullscreen (falls back to an in-page presentation mode when the Fullscreen API is blocked, e.g. inside an iframe)
+function setPresenting(on){
+  document.body.classList.toggle('fullscreen', on);
+  fullscreenBtn.textContent = on ? '⤡ Exit Fullscreen' : '⤢ Fullscreen';
+}
+function enterPseudo(){ stage.classList.add('pseudo-fs'); setPresenting(true); stage.focus(); }
+function exitPresent(){
+  if(document.fullscreenElement){ document.exitFullscreen().catch(()=>{}); }
+  stage.classList.remove('pseudo-fs'); setPresenting(false);
+}
+function toggleFullscreen(){
+  if(document.fullscreenElement || stage.classList.contains('pseudo-fs')){ exitPresent(); return; }
+  if(stage.requestFullscreen && document.fullscreenEnabled !== false){
+    let settled = false;
+    try{
+      stage.requestFullscreen()
+        .then(()=>{ settled = true; stage.classList.remove('pseudo-fs'); setPresenting(true); stage.focus(); })
+        .catch(()=>{ settled = true; enterPseudo(); });
+    }catch(e){ settled = true; enterPseudo(); }
+    // some embedded browsers never settle the promise — fall back to in-page presentation mode
+    setTimeout(()=>{ if(!settled && !document.fullscreenElement) enterPseudo(); }, 700);
+  } else enterPseudo();
+}
+document.addEventListener('fullscreenchange', ()=>{ if(!document.fullscreenElement && !stage.classList.contains('pseudo-fs')) setPresenting(false); });
 fullscreenBtn.addEventListener('click', toggleFullscreen);
 
 // load sample deck
-loadSample.addEventListener('click', ()=>{ mdInput.value = SAMPLE_MD; mdInput.dispatchEvent(new Event('input')); });
+loadSample.addEventListener('click', ()=>{ mdInput.value = SAMPLE_MD; current = 0; mdInput.dispatchEvent(new Event('input')); showSlide(0); });
 
 // sample markdown
 const SAMPLE_MD = `# Company Strategy 2025\n\nWelcome to the quarterly review.\n\n---\n\n## Key Objectives\n- Expand product-market fit\n- Increase NPS to **45+**\n- Reduce churn by *2%* per quarter\n\n---\n\n## Roadmap (Q3)\n1. Launch pilot in EMEA\n2. Improve onboarding flow\n3. Scale infra for 2x traffic\n\n---\n\n## Metrics Snapshot\n\n\`ARR: $12.4M\`\n\nContact: [ops@company.com](mailto:ops@company.com)\n\n---\n\n# Thank you\n\nQuestions?`;
 
 // helper to extract first heading as title
 function extractTitle(firstSlide){
-  const m = firstSlide.match(/^#\s+(.+)$/m); return m? m[1] : 'Untitled Deck';
+  const m = firstSlide.match(/^#{1,6}\s+(.+)$/m); return m? m[1].replace(/[*_`]/g,'').trim() : 'Untitled Deck';
 }
 
 // export html (simple standalone single-file deck)
 exportBtn.addEventListener('click', ()=>{
   const html = buildExportHTML();
   const blob = new Blob([html], {type:'text/html'});
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'deck.html'; a.click();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'deck.html';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=> URL.revokeObjectURL(url), 1500);
 });
 
 function buildExportHTML(){
   // embed slides HTML and simple navigation script
-  const slideHtml = slides.map(s=> `<section>${renderSlideHTML(s)}</section>`).join('\n');
-  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(deckTitle.textContent)}</title><style>body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;margin:0;background:#071227;color:#e6eef8}section{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;padding:60px;box-sizing:border-box}section>div{max-width:1100px}</style></head><body>${slideHtml}<script>let i=0;const s=document.querySelectorAll('section');function show(n){s.forEach((p,idx)=>p.style.display=idx===n?'flex':'none');}show(0);window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ') show(Math.min(s.length-1,++i)); if(e.key==='ArrowLeft') show(Math.max(0,--i));});</script></body></html>`;
+  const slideHtml = slides.map(s=> `<section><div class="s">${renderSlideHTML(s)}</div></section>`).join('\n');
+  const css = 'body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;margin:0;background:#071227;color:#e6eef8}'
+    + 'section{width:100vw;height:100vh;display:none;align-items:center;justify-content:center;padding:6vmin;box-sizing:border-box}'
+    + '.s{width:100%;max-width:1100px;overflow-wrap:anywhere}h1{font-size:clamp(28px,5vw,56px);margin:0 0 .3em}h2{font-size:clamp(22px,4vw,44px);margin:0 0 .3em}'
+    + 'p,li{font-size:clamp(16px,2.4vw,28px);line-height:1.4}a{color:#2dd4bf}img{max-width:100%;height:auto;border-radius:6px}'
+    + 'code{background:rgba(255,255,255,.08);padding:2px 6px;border-radius:6px}pre{overflow:auto;background:rgba(255,255,255,.06);padding:12px;border-radius:8px}pre code{background:none;padding:0}'
+    + 'blockquote{margin:8px 0;padding:4px 14px;border-left:3px solid #2dd4bf}'
+    + '.n{position:fixed;bottom:12px;right:16px;font-size:14px;opacity:.6}';
+  const js = "let i=0;const s=document.querySelectorAll('section');const n=document.querySelector('.n');"
+    + "function show(k){i=Math.max(0,Math.min(s.length-1,k));s.forEach((p,idx)=>p.style.display=idx===i?'flex':'none');n.textContent=(i+1)+' / '+s.length;}show(0);"
+    + "addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown'){e.preventDefault();show(i+1);}if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();show(i-1);}if(e.key==='Home')show(0);if(e.key==='End')show(s.length-1);});"
+    + "addEventListener('click',e=>{if(e.target.closest('a'))return;show(e.clientX<innerWidth/3?i-1:i+1);});";
+  // NOTE: the closing script tag is split so it doesn't terminate this inline <script> element
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(deckTitle.textContent)}</title><style>${css}</style></head><body>${slideHtml}<div class="n"></div><script>${js}<\/script></body></html>`;
 }
 
-// init
-mdInput.value = SAMPLE_MD;
+// init (restores the last edited deck if available)
+mdInput.value = storeGet(STORE_KEY) || SAMPLE_MD;
 mdInput.dispatchEvent(new Event('input'));
 </script>
 </body>

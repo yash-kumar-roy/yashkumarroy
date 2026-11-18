@@ -5,66 +5,181 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Todo — Single File App</title>
   <style>
-    body { font-family: Arial, sans-serif; background: #f0f0f0; margin: 0; padding: 0; }
+    * { box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; background: #f0f0f0; margin: 0; padding: 0 12px; }
     .app { max-width: 600px; margin: 20px auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
     h1 { margin-top: 0; }
-    input, select, button { padding: 8px; margin: 4px; }
-    .task { display: flex; align-items: center; justify-content: space-between; padding: 8px; border-bottom: 1px solid #ddd; }
+    input, select, button { padding: 8px; margin: 4px; font: inherit; }
+    button { cursor: pointer; }
+    .add-row { display: flex; align-items: center; margin: 0 -4px; }
+    .add-row input { flex: 1; min-width: 0; }
+    .toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px; margin: 8px -4px 4px; }
+    .filters { display: flex; flex-wrap: wrap; }
+    .filters button { background: #f7f7f7; border: 1px solid #ccc; border-radius: 4px; }
+    .filters button[aria-pressed="true"] { background: #333; border-color: #333; color: white; }
+    .count { color: gray; font-size: 14px; margin: 4px; }
+    .task { display: flex; align-items: center; gap: 8px; padding: 8px; border-bottom: 1px solid #ddd; }
+    .task input[type="checkbox"] { margin: 0; width: 18px; height: 18px; flex: 0 0 auto; cursor: pointer; }
+    .task .title { flex: 1; min-width: 0; overflow-wrap: anywhere; cursor: pointer; }
+    .task button { margin: 0; flex: 0 0 auto; }
     .task.completed .title { text-decoration: line-through; color: gray; }
+    .empty { color: gray; text-align: center; padding: 20px 8px; }
+    .footer-row { display: flex; justify-content: flex-end; margin: 8px -4px 0; }
+    @media (max-width: 420px) {
+      .app { margin: 12px auto; padding: 14px; }
+      .filters button { padding: 6px 10px; }
+    }
   </style>
 </head>
 <body>
   <div class="app">
     <h1>Todo List</h1>
-    <input id="newTask" type="text" placeholder="New task" />
-    <button id="addBtn">Add</button>
+    <form class="add-row" id="addForm" autocomplete="off">
+      <input id="newTask" type="text" placeholder="New task" aria-label="New task" maxlength="200" />
+      <button id="addBtn" type="submit">Add</button>
+    </form>
+    <div class="toolbar">
+      <div class="filters" role="group" aria-label="Filter tasks">
+        <button type="button" data-filter="all" aria-pressed="true">All</button>
+        <button type="button" data-filter="active" aria-pressed="false">Active</button>
+        <button type="button" data-filter="completed" aria-pressed="false">Completed</button>
+      </div>
+      <span class="count" id="count"></span>
+    </div>
     <div id="taskList"></div>
+    <div class="footer-row">
+      <button id="clearCompleted" type="button">Clear completed</button>
+    </div>
   </div>
 
   <script>
+    const STORAGE_KEY = 'tasks';
+    const addForm = document.getElementById('addForm');
     const newTaskInput = document.getElementById('newTask');
-    const addBtn = document.getElementById('addBtn');
     const taskList = document.getElementById('taskList');
-    let tasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+    const countEl = document.getElementById('count');
+    const clearCompletedBtn = document.getElementById('clearCompleted');
+    const filterButtons = document.querySelectorAll('.filters button');
+
+    function readStorage(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw == null ? fallback : JSON.parse(raw);
+      } catch (e) {
+        return fallback;
+      }
+    }
+
+    function writeStorage(key, value) {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch (e) {
+        // Storage unavailable (private mode / sandboxed iframe) — keep working in memory.
+      }
+    }
+
+    function makeId() {
+      return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    }
+
+    // Load and normalise saved tasks (older saves had no id).
+    let tasks = readStorage(STORAGE_KEY, []);
+    if (!Array.isArray(tasks)) tasks = [];
+    tasks = tasks
+      .filter(t => t && typeof t.title === 'string' && t.title.trim())
+      .map(t => ({ id: t.id || makeId(), title: t.title, completed: !!t.completed }));
+
+    let filter = 'all';
 
     function saveTasks() {
-      localStorage.setItem('tasks', JSON.stringify(tasks));
+      writeStorage(STORAGE_KEY, tasks);
+    }
+
+    function toggleTask(id) {
+      const task = tasks.find(t => t.id === id);
+      if (!task) return;
+      task.completed = !task.completed;
+      saveTasks();
+      renderTasks();
+    }
+
+    function deleteTask(id) {
+      tasks = tasks.filter(t => t.id !== id);
+      saveTasks();
+      renderTasks();
     }
 
     function renderTasks() {
       taskList.innerHTML = '';
-      tasks.forEach((task, index) => {
+      const visible = tasks.filter(t =>
+        filter === 'all' ? true : filter === 'active' ? !t.completed : t.completed
+      );
+
+      visible.forEach(task => {
         const taskEl = document.createElement('div');
         taskEl.className = 'task' + (task.completed ? ' completed' : '');
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = task.completed;
+        checkbox.setAttribute('aria-label', 'Mark "' + task.title + '" as ' + (task.completed ? 'not done' : 'done'));
+        checkbox.addEventListener('change', () => toggleTask(task.id));
 
         const title = document.createElement('span');
         title.className = 'title';
         title.textContent = task.title;
-        title.addEventListener('click', () => {
-          task.completed = !task.completed;
-          saveTasks();
-          renderTasks();
-        });
+        title.title = 'Click to toggle';
+        title.addEventListener('click', () => toggleTask(task.id));
 
         const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
         deleteBtn.textContent = 'Delete';
-        deleteBtn.addEventListener('click', () => {
-          tasks.splice(index, 1);
-          saveTasks();
-          renderTasks();
-        });
+        deleteBtn.setAttribute('aria-label', 'Delete "' + task.title + '"');
+        deleteBtn.addEventListener('click', () => deleteTask(task.id));
 
+        taskEl.appendChild(checkbox);
         taskEl.appendChild(title);
         taskEl.appendChild(deleteBtn);
         taskList.appendChild(taskEl);
       });
+
+      if (!visible.length) {
+        const empty = document.createElement('div');
+        empty.className = 'empty';
+        empty.textContent = tasks.length === 0 ? 'No tasks yet — add one above.'
+          : filter === 'active' ? 'Nothing left to do!' : 'No completed tasks.';
+        taskList.appendChild(empty);
+      }
+
+      const remaining = tasks.filter(t => !t.completed).length;
+      const done = tasks.length - remaining;
+      countEl.textContent = remaining + (remaining === 1 ? ' item' : ' items') + ' left';
+      clearCompletedBtn.disabled = done === 0;
+      clearCompletedBtn.textContent = done ? 'Clear completed (' + done + ')' : 'Clear completed';
+
+      filterButtons.forEach(btn => btn.setAttribute('aria-pressed', String(btn.dataset.filter === filter)));
     }
 
-    addBtn.addEventListener('click', () => {
+    addForm.addEventListener('submit', (e) => {
+      e.preventDefault();
       const title = newTaskInput.value.trim();
-      if (!title) return;
-      tasks.push({ title, completed: false });
+      if (!title) { newTaskInput.focus(); return; }
+      tasks.push({ id: makeId(), title, completed: false });
       newTaskInput.value = '';
+      // Show the new task even if the "Completed" filter is active.
+      if (filter === 'completed') filter = 'all';
+      saveTasks();
+      renderTasks();
+      newTaskInput.focus();
+    });
+
+    filterButtons.forEach(btn => btn.addEventListener('click', () => {
+      filter = btn.dataset.filter;
+      renderTasks();
+    }));
+
+    clearCompletedBtn.addEventListener('click', () => {
+      tasks = tasks.filter(t => !t.completed);
       saveTasks();
       renderTasks();
     });

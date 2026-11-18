@@ -21,16 +21,31 @@
       background: radial-gradient(1200px 800px at 20% -10%, #0d1624, var(--bg)), var(--bg);
       color: var(--text); line-height: 1.5;
     }
-    .wrap { max-width: 1100px; margin: 40px auto; padding: 24px; }
+    .wrap { max-width: 1100px; margin: 24px auto; padding: 24px; }
     .title { font-size: 28px; font-weight: 800; letter-spacing: 0.2px; margin: 0 0 8px; }
     .sub { color: var(--muted); margin: 0 0 24px; }
     .panel { background: linear-gradient(180deg, #121820, #0e141c); border: 1px solid #1f2a38; border-radius: 16px; padding: 18px; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
     .grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
-    @media (min-width: 900px) { .grid { grid-template-columns: 1.4fr 1fr; } }
+    .grid > .panel { min-width: 0; }
+    @media (min-width: 900px) { .grid { grid-template-columns: minmax(0,1.4fr) minmax(0,1fr); } }
     label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 6px; }
     input[type="text"], input[type="file"], select, textarea { width: 100%; color: var(--text); background: #0c1219; border: 1px solid #213043; border-radius: 12px; padding: 10px 12px; outline: none; }
     textarea { min-height: 240px; resize: vertical; }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .row { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 10px; margin-bottom: 10px; }
+    .row > div { min-width: 0; }
+    #uploadBlock, #urlBlock { margin-bottom: 10px; }
+    select:disabled { opacity: .55; }
+    input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .media-wrap { margin: 10px 0; display: none; }
+    .media-wrap.show { display: block; }
+    .media-wrap video { width: 100%; max-height: 260px; border-radius: 12px; background: #000; display: block; }
+    .media-wrap video.audio-only { height: 54px; background: transparent; }
+    .check { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); margin: 0 0 10px; cursor: pointer; }
+    .check input { width: auto; margin: 0; }
+    .progress { height: 6px; background: #0c1219; border: 1px solid #213043; border-radius: 999px; overflow: hidden; margin-top: 8px; display: none; }
+    .progress.show { display: block; }
+    .progress > span { display: block; height: 100%; width: 0%; background: linear-gradient(90deg, #3292ff, var(--accent)); transition: width .2s; }
+    kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; border: 1px solid #2a3a52; border-bottom-width: 2px; border-radius: 5px; padding: 0 4px; background: #0c131c; color: var(--text); }
     .btns { display: flex; gap: 10px; flex-wrap: wrap; }
     button { cursor: pointer; border: 1px solid #2a3a52; background: #0e1621; color: var(--text); padding: 10px 14px; border-radius: 12px; font-weight: 600; }
     button.primary { background: linear-gradient(180deg, #1c2a3e, #142033); border-color: #2a3a52; }
@@ -47,6 +62,16 @@
     .muted-box { background: #0b121a; border: 1px dashed #253143; border-radius: 10px; padding: 10px; color: var(--muted); font-size: 13px; }
     .footer { margin-top: 24px; color: var(--muted); font-size: 12px; text-align: center; }
     .sep { height: 1px; background: #1d2837; margin: 12px 0; border-radius: 1px; }
+    .status .badge { max-width: 100%; overflow-wrap: anywhere; }
+    @media (max-width: 520px) {
+      .wrap { margin: 0 auto; padding: 14px; }
+      .title { font-size: 22px; }
+      .sub { margin-bottom: 16px; font-size: 14px; }
+      .panel { padding: 14px; }
+      .row { grid-template-columns: minmax(0,1fr); }
+      button { padding: 9px 12px; }
+      textarea { min-height: 200px; }
+    }
   </style>
 </head>
 <body>
@@ -81,10 +106,14 @@
           <div class="hint">Large files are okay, but local engine will be slower for long videos. Start with a short clip to test.</div>
         </div>
 
+
         <div id="urlBlock" style="display:none;">
           <label for="urlInput">Video/Audio URL</label>
           <input id="urlInput" type="text" placeholder="https://... (mp4, mp3, wav). Some social links block direct access." />
           <div class="hint">Direct media URLs work best. Many YouTube/Instagram/Twitter/Reddit/Facebook links require a server helper due to CORS/ToS.</div>
+        </div>
+        <div class="media-wrap" id="mediaWrap">
+          <video id="mediaPreview" controls playsinline preload="metadata"></video>
         </div>
 
         <div class="row">
@@ -125,13 +154,17 @@
           <div class="hint">Your key is kept in your browser's localStorage. For production, use a server‑side proxy to protect secrets.</div>
         </div>
 
+        <label class="check" for="tsCheck"><input type="checkbox" id="tsCheck" /> Include timestamps (local engine)</label>
+
         <div class="sep"></div>
         <div class="btns">
-          <button id="transcribeBtn" class="accent">▶ Transcribe</button>
-          <button id="cancelBtn" class="ghost">✖ Cancel</button>
-          <button id="clearBtn" class="ghost">🧹 Clear</button>
+          <button type="button" id="transcribeBtn" class="accent">▶ Transcribe</button>
+          <button type="button" id="cancelBtn" class="ghost">✖ Cancel</button>
+          <button type="button" id="clearBtn" class="ghost">🧹 Clear</button>
         </div>
         <p class="status" id="status"><span class="badge"><span class="dot"></span> Idle</span></p>
+        <div class="progress" id="progress" aria-hidden="true"><span id="progressBar"></span></div>
+        <div class="hint" style="margin-top:8px">Shortcuts: <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Enter</kbd> transcribe · <kbd>Esc</kbd> cancel · <kbd>Alt</kbd>+<kbd>K</kbd> play/pause · <kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd> seek 5s. Double‑click a <code>[mm:ss]</code> line in the transcript to jump the player there.</div>
         <div class="hint">Tip: For social links that don't download, use a server helper (e.g., a tiny Cloudflare Worker that resolves media + sets CORS) or supply a direct media URL.</div>
       </div>
 
@@ -140,9 +173,9 @@
         <label for="output">Transcript</label>
         <textarea id="output" placeholder="Your transcript will appear here..."></textarea>
         <div class="btns" style="margin-top:8px;">
-          <button id="copyBtn" class="primary">Copy</button>
-          <button id="downloadTxtBtn" class="primary">Download .txt</button>
-          <button id="downloadPdfBtn" class="primary">Download .pdf</button>
+          <button type="button" id="copyBtn" class="primary">Copy</button>
+          <button type="button" id="downloadTxtBtn" class="primary">Download .txt</button>
+          <button type="button" id="downloadPdfBtn" class="primary">Download .pdf</button>
         </div>
       </div>
     </div>
@@ -150,16 +183,22 @@
     <p class="footer">Made with ❤️ — runs entirely in your browser for local mode. APIs are optional. No data leaves your device unless you choose an API provider.</p>
   </div>
 
-  <!-- External libs -->
-  <script src="https://cdn.jsdelivr.net/npm/@xenova/transformers/dist/transformers.min.js"></script>
+  <!-- External libs: Transformers.js (ES module, pinned) and jsPDF are lazy-loaded on first use -->
   <script>
     // Globals
+    const TRANSFORMERS_URL = 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+    const JSPDF_URL = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
     let cancelRequested = false;
-    let transcriber = null; // transformers.js pipeline
+    let busy = false;
+    let runId = 0;
+    let transformersLib = null;      // lazily imported module
+    const pipelines = {};            // model id -> pipeline (so changing quality/language loads the right model)
     let currentEngine = 'local';
+    let mediaObjectUrl = null;
 
     const el = (id) => document.getElementById(id);
     const statusEl = el('status');
+    const media = el('mediaPreview');
 
     const enginesRequiringAPI = new Set(['assemblyai', 'deepgram']);
 
@@ -170,6 +209,7 @@
       el('apiBlock').style.display = needsAPI ? 'block' : 'none';
       el('langSelect').disabled = !['local'].includes(currentEngine);
       el('qualitySelect').disabled = !['local'].includes(currentEngine);
+      el('tsCheck').disabled = currentEngine !== 'local';
       savePrefs();
     });
 
@@ -177,17 +217,87 @@
       const mode = e.target.value;
       el('uploadBlock').style.display = mode === 'upload' ? 'block' : 'none';
       el('urlBlock').style.display = mode === 'url' ? 'block' : 'none';
+      updateMediaPreview();
       savePrefs();
     });
+    ['langSelect', 'qualitySelect'].forEach(id => el(id).addEventListener('change', savePrefs));
+    ['apiKey', 'modelSelect'].forEach(id => el(id).addEventListener('input', savePrefs));
+    el('tsCheck').addEventListener('change', savePrefs);
+
+    // Media preview: play back the chosen file / URL so the transcript can be checked against it
+    el('fileInput').addEventListener('change', () => { updateMediaPreview(); const f = el('fileInput').files?.[0]; if (f) setStatus(`Loaded ${f.name} (${formatBytes(f.size)})`, ''); });
+    el('urlInput').addEventListener('change', updateMediaPreview);
+    function updateMediaPreview() {
+      const mode = el('sourceSelect').value;
+      let src = '', isAudio = false;
+      if (mode === 'upload') {
+        const f = el('fileInput').files?.[0];
+        if (mediaObjectUrl) { URL.revokeObjectURL(mediaObjectUrl); mediaObjectUrl = null; }
+        if (f) { mediaObjectUrl = URL.createObjectURL(f); src = mediaObjectUrl; isAudio = (f.type || '').startsWith('audio/'); }
+      } else {
+        src = (el('urlInput').value || '').trim();
+        isAudio = /\.(mp3|wav|m4a|aac|ogg|oga|flac|opus)(\?|#|$)/i.test(src);
+        if (src && !/^https?:\/\//i.test(src)) src = '';
+      }
+      if (!src) { media.removeAttribute('src'); media.load(); el('mediaWrap').classList.remove('show'); return; }
+      media.classList.toggle('audio-only', isAudio);
+      media.src = src;
+      el('mediaWrap').classList.add('show');
+    }
+    media.addEventListener('loadedmetadata', () => { if (media.videoWidth === 0) media.classList.add('audio-only'); });
+    media.addEventListener('error', () => { if (media.getAttribute('src')) setStatus('This media can\'t be played in the browser preview (it may still transcribe).', 'err'); });
 
     el('transcribeBtn').addEventListener('click', () => startTranscription());
-    el('cancelBtn').addEventListener('click', () => { cancelRequested = true; setStatus('Cancelling...', 'err'); });
+    el('cancelBtn').addEventListener('click', cancel);
     el('clearBtn').addEventListener('click', () => { el('output').value = ''; setStatus('Cleared. Ready.', ''); });
-    el('copyBtn').addEventListener('click', () => { navigator.clipboard.writeText(el('output').value || ''); setStatus('Copied to clipboard', 'ok'); });
-    el('downloadTxtBtn').addEventListener('click', () => downloadText('transcript.txt', el('output').value || ''));
-    el('downloadPdfBtn').addEventListener('click', () => downloadPDF('transcript.pdf', el('output').value || ''));
+    el('copyBtn').addEventListener('click', copyTranscript);
+    el('downloadTxtBtn').addEventListener('click', () => {
+      const text = el('output').value || '';
+      if (!text.trim()) return setStatus('Nothing to download yet.', 'err');
+      downloadText('transcript.txt', text);
+      setStatus('Text file downloaded ✓', 'ok');
+    });
+    el('downloadPdfBtn').addEventListener('click', async () => {
+      const text = el('output').value || '';
+      if (!text.trim()) return setStatus('Nothing to download yet.', 'err');
+      try { await downloadPDF('transcript.pdf', text); }
+      catch (err) { console.error(err); setStatus('PDF export failed: ' + (err?.message || 'could not load jsPDF'), 'err'); }
+    });
 
-    // Persist simple prefs
+    function cancel() {
+      if (!busy) return setStatus('Nothing to cancel.', '');
+      cancelRequested = true;
+      runId++; // results of the in-flight run will be discarded
+      setBusy(false);
+      setStatus('Cancelled.', 'err');
+    }
+
+    // Keyboard shortcuts (document-level, so they work whenever the frame has focus)
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); if (!busy) startTranscription(); return; }
+      if (e.key === 'Escape' && busy) { e.preventDefault(); cancel(); return; }
+      if (e.altKey && !e.ctrlKey && !e.metaKey && media.getAttribute('src')) {
+        if (e.code === 'KeyK' || e.key === 'k' || e.key === 'K') { e.preventDefault(); media.paused ? media.play().catch(()=>{}) : media.pause(); }
+        else if (e.key === 'ArrowLeft') { e.preventDefault(); media.currentTime = Math.max(0, media.currentTime - 5); }
+        else if (e.key === 'ArrowRight') { e.preventDefault(); media.currentTime = Math.min(media.duration || Infinity, media.currentTime + 5); }
+      }
+    });
+
+    // Double-click a "[mm:ss]" line in the transcript to seek the player
+    el('output').addEventListener('dblclick', () => {
+      const ta = el('output');
+      const pos = ta.selectionStart || 0;
+      const start = ta.value.lastIndexOf('\n', pos - 1) + 1;
+      const line = ta.value.slice(start, ta.value.indexOf('\n', start) === -1 ? undefined : ta.value.indexOf('\n', start));
+      const m = line.match(/^\s*\[(?:(\d+):)?(\d{1,2}):(\d{2})(?:\.\d+)?/);
+      if (!m || !media.getAttribute('src')) return;
+      const t = (+(m[1] || 0)) * 3600 + (+m[2]) * 60 + (+m[3]);
+      media.currentTime = t;
+      media.play().catch(() => {});
+      setStatus(`Jumped to ${formatTime(t)}`, 'ok');
+    });
+
+    // Persist simple prefs (storage may be unavailable in sandboxed iframes / private mode)
     function savePrefs() {
       const prefs = {
         engine: el('engineSelect').value,
@@ -196,17 +306,21 @@
         quality: el('qualitySelect').value,
         apiKey: el('apiKey').value,
         apiModel: el('modelSelect').value,
+        timestamps: el('tsCheck').checked,
       };
-      localStorage.setItem('transcribeit:prefs', JSON.stringify(prefs));
+      try { localStorage.setItem('transcribeit:prefs', JSON.stringify(prefs)); } catch (e) {}
     }
     function loadPrefs() {
-      const prefs = JSON.parse(localStorage.getItem('transcribeit:prefs') || '{}');
-      if (prefs.engine) el('engineSelect').value = prefs.engine;
-      if (prefs.source) el('sourceSelect').value = prefs.source;
-      if (prefs.lang) el('langSelect').value = prefs.lang;
-      if (prefs.quality) el('qualitySelect').value = prefs.quality;
+      let prefs = {};
+      try { prefs = JSON.parse(localStorage.getItem('transcribeit:prefs') || '{}') || {}; } catch (e) { prefs = {}; }
+      const setSel = (id, v) => { if (v && [...el(id).options].some(o => o.value === v)) el(id).value = v; };
+      setSel('engineSelect', prefs.engine);
+      setSel('sourceSelect', prefs.source);
+      setSel('langSelect', prefs.lang);
+      setSel('qualitySelect', prefs.quality);
       if (prefs.apiKey) el('apiKey').value = prefs.apiKey;
       if (prefs.apiModel) el('modelSelect').value = prefs.apiModel;
+      el('tsCheck').checked = !!prefs.timestamps;
       // trigger visibility
       el('engineSelect').dispatchEvent(new Event('change'));
       el('sourceSelect').dispatchEvent(new Event('change'));
@@ -217,14 +331,36 @@
       const cls = kind === 'ok' ? 'badge ok' : kind === 'err' ? 'badge err' : 'badge';
       statusEl.innerHTML = `<span class="${cls}"><span class="dot"></span> ${escapeHtml(message)}</span>`;
     }
+    function setProgress(pct) {
+      const p = el('progress');
+      if (pct == null) { p.classList.remove('show'); return; }
+      p.classList.add('show');
+      el('progressBar').style.width = Math.max(0, Math.min(100, pct)).toFixed(0) + '%';
+    }
+    function setBusy(on) {
+      busy = on;
+      el('transcribeBtn').disabled = on;
+      el('transcribeBtn').textContent = on ? '⏳ Working…' : '▶ Transcribe';
+      if (!on) setProgress(null);
+    }
 
     function escapeHtml(str){
-      return (str||'').replace(/[&<>"]+/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]));
+      return String(str ?? '').replace(/[&<>"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]));
+    }
+    function formatBytes(b) { if (!b) return '0 B'; const u = ['B','KB','MB','GB']; let i = 0; while (b >= 1024 && i < u.length - 1) { b /= 1024; i++; } return (i ? b.toFixed(1) : b) + ' ' + u[i]; }
+    function formatTime(t) {
+      t = Math.max(0, Math.floor(t || 0));
+      const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+      const mm = String(m).padStart(2, '0'), ss = String(s).padStart(2, '0');
+      return h ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
     }
 
     async function startTranscription() {
+      if (busy) return;
+      const myRun = ++runId;
       try {
         cancelRequested = false;
+        setBusy(true);
         const engine = el('engineSelect').value;
         const source = el('sourceSelect').value;
 
@@ -232,40 +368,66 @@
           if (source === 'upload') {
             const file = el('fileInput').files?.[0];
             if (!file) return setStatus('Please choose a file to transcribe.', 'err');
-            await transcribeLocalFile(file);
+            await transcribeLocalFile(file, myRun);
           } else {
             const url = (el('urlInput').value || '').trim();
             if (!url) return setStatus('Please paste a media URL.', 'err');
-            await transcribeLocalFromUrl(url);
+            await transcribeLocalFromUrl(url, myRun);
           }
         } else if (engine === 'assemblyai') {
           const apiKey = (el('apiKey').value || '').trim();
           if (!apiKey) return setStatus('AssemblyAI key required.', 'err');
-          const url = source === 'upload' ? await blobUrlFromFile(el('fileInput').files?.[0]) : (el('urlInput').value || '').trim();
+          let url;
+          if (source === 'upload') {
+            const file = el('fileInput').files?.[0];
+            if (!file) return setStatus('Choose a file.', 'err');
+            url = await uploadToAssemblyAI(apiKey, file);
+          } else {
+            url = (el('urlInput').value || '').trim();
+          }
           if (!url) return setStatus('Provide a file or URL.', 'err');
-          await transcribeWithAssemblyAI(apiKey, url, el('modelSelect').value || undefined);
+          await transcribeWithAssemblyAI(apiKey, url, el('modelSelect').value || undefined, myRun);
         } else if (engine === 'deepgram') {
           const apiKey = (el('apiKey').value || '').trim();
           if (!apiKey) return setStatus('Deepgram key required.', 'err');
           if (source === 'upload') {
             const file = el('fileInput').files?.[0];
             if (!file) return setStatus('Choose a file.', 'err');
-            await transcribeWithDeepgramUpload(apiKey, file, el('modelSelect').value || undefined);
+            await transcribeWithDeepgramUpload(apiKey, file, el('modelSelect').value || undefined, myRun);
           } else {
             const url = (el('urlInput').value || '').trim();
             if (!url) return setStatus('Paste a media URL.', 'err');
-            await transcribeWithDeepgramUrl(apiKey, url, el('modelSelect').value || undefined);
+            await transcribeWithDeepgramUrl(apiKey, url, el('modelSelect').value || undefined, myRun);
           }
         }
       } catch (err) {
         console.error(err);
-        setStatus('Error: ' + (err?.message || err), 'err');
+        if (myRun === runId) setStatus('Error: ' + (err?.message || err), 'err');
+      } finally {
+        if (myRun === runId) setBusy(false);
       }
     }
 
+    function writeResult(myRun, text, msg) {
+      if (myRun !== runId || cancelRequested) return false; // cancelled meanwhile
+      el('output').value = text;
+      setStatus(msg, 'ok');
+      return true;
+    }
+
     // ---------- LOCAL (Transformers.js Whisper) ----------
-    async function ensureLocalModelLoaded() {
-      if (transcriber) return transcriber;
+    async function loadTransformers() {
+      if (transformersLib) return transformersLib;
+      setStatus('Loading Transformers.js…');
+      try {
+        transformersLib = await import(TRANSFORMERS_URL);
+      } catch (e) {
+        throw new Error('Could not load Transformers.js from the CDN (offline or blocked).');
+      }
+      return transformersLib;
+    }
+
+    function currentModelId() {
       const quality = el('qualitySelect').value; // tiny|base|small
       const lang = el('langSelect').value;
       const modelMap = {
@@ -273,97 +435,142 @@
         base: lang === 'en' ? 'Xenova/whisper-base.en' : 'Xenova/whisper-base',
         small: lang === 'en' ? 'Xenova/whisper-small.en' : 'Xenova/whisper-small',
       };
-      const model = modelMap[quality];
-      setStatus(`Loading local model: ${model} (first load may take a while) ...`);
-      // use WebGPU/WebGL if available
-      const { pipeline, env } = window.transformers;
-      env.allowLocalModels = false; // fetch from CDN
-      env.useBrowserCache = true;   // cache in IndexedDB
-      transcriber = await pipeline('automatic-speech-recognition', model);
-      setStatus('Model ready ✓', 'ok');
-      return transcriber;
+      return modelMap[quality] || modelMap.tiny;
     }
 
-    async function transcribeLocalFile(file) {
+    async function ensureLocalModelLoaded(myRun) {
+      const model = currentModelId();
+      if (pipelines[model]) return { pipe: pipelines[model], model };
+      const { pipeline, env } = await loadTransformers();
+      env.allowLocalModels = false; // fetch from the Hugging Face hub
+      env.useBrowserCache = true;   // cache model files (Cache API) for next time
+      if (myRun === runId) setStatus(`Loading local model: ${model} (first load may take a while) ...`);
+      const files = {};
+      const pipe = await pipeline('automatic-speech-recognition', model, {
+        progress_callback: (p) => {
+          if (myRun !== runId) return;
+          if (p && p.status === 'progress' && p.file) {
+            files[p.file] = { loaded: p.loaded || 0, total: p.total || 0 };
+            const all = Object.values(files);
+            const loaded = all.reduce((a, f) => a + f.loaded, 0), total = all.reduce((a, f) => a + f.total, 0);
+            if (total) { setProgress(loaded / total * 100); setStatus(`Downloading ${model}: ${formatBytes(loaded)} / ${formatBytes(total)}`); }
+          }
+        }
+      });
+      pipelines[model] = pipe;
+      setProgress(null);
+      if (myRun === runId) setStatus('Model ready ✓', 'ok');
+      return { pipe, model };
+    }
+
+    async function transcribeLocalFile(file, myRun) {
       setStatus('Preparing audio...');
       const arrayBuf = await file.arrayBuffer();
       const audio = await decodeAndResample(arrayBuf, 16000);
-      await runLocalASR(audio);
+      if (myRun !== runId) return;
+      await runLocalASR(audio, 16000, myRun);
     }
 
-    async function transcribeLocalFromUrl(url) {
+    async function transcribeLocalFromUrl(url, myRun) {
       setStatus('Fetching media (CORS must be allowed)...');
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('Failed to fetch media. Many sites block cross-origin download.');
+      let res;
+      try { res = await fetch(url); }
+      catch (e) { throw new Error('Failed to fetch media. The site probably blocks cross-origin download (CORS).'); }
+      if (!res.ok) throw new Error(`Failed to fetch media (HTTP ${res.status}). Many sites block cross-origin download.`);
       const arrayBuf = await res.arrayBuffer();
       const audio = await decodeAndResample(arrayBuf, 16000);
-      await runLocalASR(audio);
+      if (myRun !== runId) return;
+      await runLocalASR(audio, 16000, myRun);
     }
 
-    async function runLocalASR(float32Audio, sampleRate = 16000) {
-      const pipe = await ensureLocalModelLoaded();
-      setStatus('Transcribing locally...');
+    async function runLocalASR(float32Audio, sampleRate = 16000, myRun) {
+      const { pipe, model } = await ensureLocalModelLoaded(myRun);
+      if (myRun !== runId) return;
+      const withTs = el('tsCheck').checked;
+      const durationS = float32Audio.length / sampleRate;
+      setStatus(`Transcribing ${formatTime(durationS)} of audio locally…`);
       const t0 = performance.now();
-      const out = await pipe(
-        { array: float32Audio, sampling_rate: sampleRate },
-        {
-          chunk_length_s: 25,
-          stride_length_s: 5,
-          return_timestamps: false,
-          task: 'transcribe',
-          language: el('langSelect').value === 'auto' ? undefined : el('langSelect').value,
-        }
-      );
+      const opts = { chunk_length_s: 30, stride_length_s: 5, return_timestamps: withTs };
+      // English-only (.en) models reject `language` / `task` options
+      if (!model.endsWith('.en')) {
+        opts.task = 'transcribe';
+        const lang = el('langSelect').value;
+        if (lang !== 'auto') opts.language = lang;
+      }
+      const out = await pipe(float32Audio, opts);
       const t1 = performance.now();
-      el('output').value = (out?.text || '').trim();
-      setStatus(`Done in ${(t1 - t0).toFixed(0)} ms (local)`, 'ok');
+      let text = (out?.text || '').trim();
+      if (withTs && Array.isArray(out?.chunks) && out.chunks.length) {
+        text = out.chunks.map(c => `[${formatTime(c.timestamp?.[0])}] ${String(c.text || '').trim()}`).join('\n');
+      }
+      if (!text) text = '';
+      writeResult(myRun, text, text ? `Done in ${((t1 - t0) / 1000).toFixed(1)} s (local)` : 'Finished — no speech detected.');
     }
 
     async function decodeAndResample(arrayBuffer, targetRate = 16000) {
-      // Decode via WebAudio, then resample using OfflineAudioContext for high quality
-      const actx = new (window.AudioContext || window.webkitAudioContext)();
-      const audioBuffer = await actx.decodeAudioData(arrayBuffer.slice(0));
-      const offline = new OfflineAudioContext(1, Math.ceil(audioBuffer.duration * targetRate), targetRate);
-      const src = offline.createBufferSource();
-      // mixdown to mono
-      const mono = offline.createGain();
+      // Decode via WebAudio, mix down to mono, then resample using OfflineAudioContext
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC || !window.OfflineAudioContext) throw new Error('Web Audio API is not supported in this browser.');
+      const actx = new AC();
+      let audioBuffer;
+      try {
+        audioBuffer = await actx.decodeAudioData(arrayBuffer.slice(0));
+      } catch (e) {
+        throw new Error('Could not decode the audio track of this file (unsupported codec/format).');
+      } finally {
+        try { actx.close(); } catch (e) {}
+      }
+      if (!audioBuffer.duration) throw new Error('The file contains no audio.');
+      const offline = new OfflineAudioContext(1, Math.max(1, Math.ceil(audioBuffer.duration * targetRate)), targetRate);
       const chs = audioBuffer.numberOfChannels;
-      const merger = offline.createChannelMerger(1);
-      // Create a mono buffer by averaging channels
       const monoBuf = offline.createBuffer(1, audioBuffer.length, audioBuffer.sampleRate);
       const monoData = monoBuf.getChannelData(0);
       for (let c = 0; c < chs; c++) {
         const chData = audioBuffer.getChannelData(c);
         for (let i = 0; i < chData.length; i++) monoData[i] += chData[i] / chs;
       }
+      const src = offline.createBufferSource();
       src.buffer = monoBuf;
-      src.connect(merger);
-      merger.connect(mono);
-      mono.connect(offline.destination);
+      src.connect(offline.destination);
       src.start();
       const resampled = await offline.startRendering();
       return resampled.getChannelData(0);
     }
 
     // ---------- AssemblyAI ----------
-    async function transcribeWithAssemblyAI(apiKey, mediaUrl, model) {
+    async function uploadToAssemblyAI(apiKey, file) {
+      setStatus('Uploading file to AssemblyAI...');
+      const res = await fetch('https://api.assemblyai.com/v2/upload', {
+        method: 'POST',
+        headers: { 'authorization': apiKey, 'content-type': 'application/octet-stream' },
+        body: file
+      });
+      if (!res.ok) throw new Error(`AssemblyAI upload failed (HTTP ${res.status}). Check your key.`);
+      const data = await res.json();
+      return data.upload_url;
+    }
+
+    async function transcribeWithAssemblyAI(apiKey, mediaUrl, model, myRun) {
       setStatus('Submitting to AssemblyAI...');
       // Docs: POST /v2/transcript with { audio_url }
+      const body = { audio_url: mediaUrl, language_detection: true, speaker_labels: false, punctuate: true, format_text: true };
+      if (model) body.speech_model = model;
       const createRes = await fetch('https://api.assemblyai.com/v2/transcript', {
         method: 'POST',
         headers: {
           'authorization': apiKey,
           'content-type': 'application/json',
         },
-        body: JSON.stringify({ audio_url: mediaUrl, language_detection: true, speaker_labels: false, punctuate: true, format_text: true, speech_model: model || undefined })
+        body: JSON.stringify(body)
       });
       if (!createRes.ok) throw new Error('Create transcript failed. Check key, CORS, or URL accessibility.');
       const task = await createRes.json();
       const id = task.id;
       setStatus('Queued. Polling status...');
       let attempts = 0;
-      while (!cancelRequested) {
+      while (!cancelRequested && myRun === runId) {
         await sleep(1500);
+        if (cancelRequested || myRun !== runId) break;
         attempts++;
         const poll = await fetch(`https://api.assemblyai.com/v2/transcript/${id}`, {
           headers: { 'authorization': apiKey }
@@ -371,8 +578,7 @@
         if (!poll.ok) throw new Error('Polling failed (network/CORS).');
         const data = await poll.json();
         if (data.status === 'completed') {
-          el('output').value = data.text || '';
-          setStatus('Completed via AssemblyAI ✓', 'ok');
+          writeResult(myRun, data.text || '', 'Completed via AssemblyAI ✓');
           return;
         } else if (data.status === 'error') {
           throw new Error(data.error || 'AssemblyAI error');
@@ -380,11 +586,14 @@
           setStatus(`Processing: ${data.status} (t≈${(attempts*1.5).toFixed(0)}s)`);
         }
       }
-      if (cancelRequested) setStatus('Cancelled.', 'err');
     }
 
     // ---------- Deepgram ----------
-    async function transcribeWithDeepgramUrl(apiKey, mediaUrl, model) {
+    function deepgramText(data) {
+      const alt = data?.results?.channels?.[0]?.alternatives?.[0];
+      return (alt?.paragraphs?.transcript) || (alt?.transcript) || '';
+    }
+    async function transcribeWithDeepgramUrl(apiKey, mediaUrl, model, myRun) {
       setStatus('Submitting URL to Deepgram...');
       const params = new URLSearchParams({ smart_format: 'true', model: model || 'nova-2' });
       const res = await fetch(`https://api.deepgram.com/v1/listen?${params}`, {
@@ -392,68 +601,75 @@
         headers: { 'Authorization': `Token ${apiKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: mediaUrl })
       });
-      if (!res.ok) throw new Error('Deepgram URL transcription failed.');
-      const data = await res.json();
-      const text = (data?.results?.channels?.[0]?.alternatives?.[0]?.paragraphs?.transcript) || (data?.results?.channels?.[0]?.alternatives?.[0]?.transcript) || '';
-      el('output').value = text;
-      setStatus('Completed via Deepgram ✓', 'ok');
+      if (!res.ok) throw new Error(`Deepgram URL transcription failed (HTTP ${res.status}).`);
+      writeResult(myRun, deepgramText(await res.json()).trim(), 'Completed via Deepgram ✓');
     }
 
-    async function transcribeWithDeepgramUpload(apiKey, file, model) {
+    async function transcribeWithDeepgramUpload(apiKey, file, model, myRun) {
       setStatus('Uploading to Deepgram...');
       const res = await fetch(`https://api.deepgram.com/v1/listen?smart_format=true&model=${encodeURIComponent(model||'nova-2')}`, {
         method: 'POST',
         headers: { 'Authorization': `Token ${apiKey}`, 'Content-Type': file.type || 'application/octet-stream' },
         body: file
       });
-      if (!res.ok) throw new Error('Deepgram upload transcription failed.');
-      const data = await res.json();
-      const text = (data?.results?.channels?.[0]?.alternatives?.[0]?.paragraphs?.transcript) || (data?.results?.channels?.[0]?.alternatives?.[0]?.transcript) || '';
-      el('output').value = text;
-      setStatus('Completed via Deepgram ✓', 'ok');
+      if (!res.ok) throw new Error(`Deepgram upload transcription failed (HTTP ${res.status}).`);
+      writeResult(myRun, deepgramText(await res.json()).trim(), 'Completed via Deepgram ✓');
     }
 
     // ---------- Helpers ----------
     function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
 
+    async function copyTranscript() {
+      const text = el('output').value || '';
+      if (!text.trim()) return setStatus('Nothing to copy yet.', 'err');
+      try {
+        if (!navigator.clipboard || !window.isSecureContext) throw new Error('no clipboard API');
+        await navigator.clipboard.writeText(text);
+      } catch (e) {
+        // Fallback for iframes without clipboard-write permission
+        const ta = el('output');
+        const [s, en] = [ta.selectionStart, ta.selectionEnd];
+        ta.focus(); ta.select();
+        let ok = false;
+        try { ok = document.execCommand('copy'); } catch (err) {}
+        ta.setSelectionRange(s, en);
+        if (!ok) return setStatus('Copy blocked by the browser — select the text and press Ctrl+C.', 'err');
+      }
+      setStatus('Copied to clipboard', 'ok');
+    }
+
     function downloadText(filename, text) {
       const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url; a.download = filename; a.click();
-      URL.revokeObjectURL(url);
+      a.href = url; a.download = filename; a.style.display = 'none';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
     }
 
-    async function blobUrlFromFile(file) {
-      if (!file) return null;
-      // For APIs that accept a URL only: we create a temporary object URL. Many APIs cannot fetch blob: URLs.
-      // This is mostly a placeholder. Prefer upload endpoints when available.
-      return new Promise((resolve) => {
-        const u = URL.createObjectURL(file);
-        resolve(u);
+    function loadScript(src) {
+      return new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = src; s.onload = resolve; s.onerror = () => { s.remove(); reject(new Error('could not load ' + src)); };
+        document.body.appendChild(s);
       });
     }
 
     async function downloadPDF(filename, text) {
       // Lazy-load jsPDF only when needed
-      if (!window.jspdf) {
-        await new Promise((resolve, reject) => {
-          const s = document.createElement('script');
-          s.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
-          s.onload = resolve; s.onerror = reject; document.body.appendChild(s);
-        });
-      }
+      if (!window.jspdf) { setStatus('Preparing PDF…'); await loadScript(JSPDF_URL); }
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-      const margin = 40; const maxWidth = 515; const lineHeight = 16; const fontSize = 12;
-      doc.setFont('Times', 'Normal');
+      const margin = 40; const pageH = doc.internal.pageSize.getHeight(); const maxWidth = doc.internal.pageSize.getWidth() - margin * 2;
+      const lineHeight = 16; const fontSize = 12;
+      doc.setFont('times', 'normal');
       doc.setFontSize(14);
       doc.text('Transcript', margin, margin);
       doc.setFontSize(fontSize);
       const lines = doc.splitTextToSize(text || '', maxWidth);
-      let cursorY = margin + 20;
+      let cursorY = margin + 24;
       for (const line of lines) {
-        if (cursorY > 800) { doc.addPage(); cursorY = margin; }
+        if (cursorY > pageH - margin) { doc.addPage(); cursorY = margin; }
         doc.text(line, margin, cursorY);
         cursorY += lineHeight;
       }

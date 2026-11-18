@@ -13,31 +13,36 @@
     p.lead{margin:0 0 18px 0;color:var(--muted);font-size:13px}
 
     .row{display:flex;gap:12px;align-items:center}
-    input[type=text]{flex:1;padding:10px 12px;border:1px solid #e6e9ee;border-radius:6px;font-size:15px}
+    .row > *{min-width:0}
+    input[type=text]{flex:1;min-width:0;padding:10px 12px;border:1px solid #e6e9ee;border-radius:6px;font-size:15px;font-family:inherit}
     select{padding:8px;border-radius:6px;border:1px solid #e6e9ee}
     .btn{padding:8px 12px;border-radius:7px;border:1px solid #cbd5e1;background:#f8fafc;cursor:pointer}
     .btn.primary{background:#111827;color:#fff;border-color:#111827}
 
     .output{margin-top:18px;border-top:1px solid #eef2f7;padding-top:18px}
-    .steps{margin:8px 0 0 0;padding-left:18px}
+    .steps{margin:8px 0 0 0;padding-left:22px}
+    .steps li{margin:4px 0;overflow-wrap:anywhere;line-height:1.45}
+    .error{margin-top:14px;padding:10px 12px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;border-radius:6px;font-size:14px}
+    .status{min-height:18px;margin-top:8px}
+    code{font-size:12px;background:#f3f4f6;padding:1px 4px;border-radius:4px}
     .meta{font-size:13px;color:var(--muted);margin-top:6px}
 
-    footer{margin-top:16px;display:flex;justify-content:space-between;align-items:center}
+    footer{margin-top:16px;display:flex;justify-content:space-between;align-items:center;gap:8px 16px;flex-wrap:wrap}
     .small{font-size:13px;color:var(--muted)}
 
-    pre{background:#fbfdff;border:1px solid #eef6ff;padding:12px;border-radius:6px;overflow:auto}
+    pre{background:#fbfdff;border:1px solid #eef6ff;padding:12px;border-radius:6px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:15px}
 
-    @media (max-width:600px){.row{flex-direction:column;align-items:stretch}.btn{width:100%}.card{padding:16px}}
+    @media (max-width:600px){.wrap{padding:12px;align-items:flex-start}.card{max-width:100%;padding:16px}.row{flex-direction:column;align-items:stretch}.btn{width:100%}h1{font-size:18px}}
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="card" role="application" aria-labelledby="title">
       <h1 id="title">Equation Solver Tool</h1>
-      <p class="lead">Enter a single-variable algebraic equation (e.g. <code>2x + 3 = 7</code> or <code>x^2 - 5x + 6 = 0</code>). The tool will produce a step-by-step breakdown and the result. Export results as text when done.</p>
+      <p class="lead">Enter a single-variable algebraic equation (e.g. <code>2x + 3 = 7</code> or <code>x^2 - 5x + 6 = 0</code>), or a system of linear equations separated by <code>;</code> (e.g. <code>2x + y = 5; x - y = 1</code>). The tool will produce a step-by-step breakdown and the result. Export results as text when done.</p>
 
       <div class="row">
-        <input id="equation" type="text" placeholder="Enter equation, e.g. 3x^2 - 6x + 2 = 0" aria-label="equation input">
+        <input id="equation" type="text" placeholder="Enter equation, e.g. 3x^2 - 6x + 2 = 0" aria-label="equation input" autocomplete="off" autocapitalize="off" spellcheck="false">
         <select id="variable" aria-label="variable">
           <option value="x">x</option>
           <option value="y">y</option>
@@ -48,6 +53,9 @@
         <button id="copy" class="btn">Copy</button>
       </div>
 
+      <div class="small status" id="status" role="status" aria-live="polite"></div>
+      <div class="error" id="error" role="alert" hidden></div>
+
       <div class="output" id="output" hidden>
         <div class="meta" id="meta"></div>
         <ol class="steps" id="steps"></ol>
@@ -56,152 +64,453 @@
 
       <footer>
         <div class="small">Minimal academic UI • Local-only • No external libraries</div>
-        <div class="small">Supports linear and quadratic polynomials (single variable).</div>
+        <div class="small">Supports linear &amp; quadratic equations and systems of linear equations.</div>
       </footer>
     </div>
   </div>
 
   <script>
-    // --- Utility: parse polynomial expressions in single variable into coefficient map ---
-    function sanitize(expr){ return expr.replace(/\s+/g,'').replace(/\u2212/g,'-'); }
+    // =====================================================================
+    // Polynomial algebra
+    // A polynomial is a plain object: { monomialKey: coefficient }.
+    // monomialKey is '' for a constant, otherwise sorted "var^exp" parts joined
+    // by '*', e.g. 'x^2', 'x*y'. This lets one parser serve single equations
+    // (any degree) and systems of linear equations (several variables).
+    // =====================================================================
+    const EPS = 1e-10;
 
-    function splitTerms(expr){
-      // convert unary leading + to nothing, then replace - with +- to split
-      expr = expr.replace(/^[+]/,'');
-      // insert explicit + for splitting but avoid scientific notation (not supported here)
-      expr = expr.replace(/-/g,'+-');
-      const parts = expr.split('+').filter(s=>s!=='');
+    function monoParse(key){
+      const vars = {};
+      if(key === '') return vars;
+      for(const part of key.split('*')){
+        const [v, e] = part.split('^');
+        vars[v] = (vars[v] || 0) + (e ? parseInt(e, 10) : 1);
+      }
+      return vars;
+    }
+    function monoKey(vars){
+      return Object.keys(vars).filter(v => vars[v] > 0).sort()
+        .map(v => vars[v] === 1 ? v : `${v}^${vars[v]}`).join('*');
+    }
+    function monoDegree(key){
+      const vars = monoParse(key);
+      return Object.values(vars).reduce((a, b) => a + b, 0);
+    }
+
+    function polyConst(c){ return c === 0 ? {} : {'': c}; }
+    function polyVar(v){ return {[v]: 1}; }
+    function polyClean(p){
+      const out = {};
+      for(const k in p){ if(Math.abs(p[k]) > 1e-12) out[k] = p[k]; }
+      return out;
+    }
+    function polyAdd(a, b, sign = 1){
+      const out = Object.assign({}, a);
+      for(const k in b){ out[k] = (out[k] || 0) + sign * b[k]; }
+      return polyClean(out);
+    }
+    function polyMul(a, b){
+      const out = {};
+      for(const ka in a){
+        const va = monoParse(ka);
+        for(const kb in b){
+          const vb = monoParse(kb);
+          const merged = Object.assign({}, va);
+          for(const v in vb) merged[v] = (merged[v] || 0) + vb[v];
+          const k = monoKey(merged);
+          out[k] = (out[k] || 0) + a[ka] * b[kb];
+        }
+      }
+      return polyClean(out);
+    }
+    function polyScale(p, s){
+      const out = {};
+      for(const k in p) out[k] = p[k] * s;
+      return polyClean(out);
+    }
+    function polyIsConst(p){ return Object.keys(p).every(k => k === ''); }
+    function polyConstValue(p){ return p[''] || 0; }
+    function polyVars(p){
+      const s = new Set();
+      for(const k in p) for(const v of Object.keys(monoParse(k))) s.add(v);
+      return [...s].sort();
+    }
+    function polyDegree(p){
+      const keys = Object.keys(p);
+      return keys.length ? Math.max(...keys.map(monoDegree)) : -Infinity;
+    }
+
+    // =====================================================================
+    // Tokenizer + recursive-descent parser (no eval)
+    //   expr   := term (('+'|'-') term)*
+    //   term   := unary (('*'|'/'|implicit) unary)*
+    //   unary  := ('+'|'-') unary | power
+    //   power  := primary ('^' unary)?
+    //   primary:= number | variable | '(' expr ')'
+    // =====================================================================
+    class ParseError extends Error {}
+
+    function normalize(expr){
+      return expr
+        .replace(/[−–—]/g, '-')   // minus / dashes
+        .replace(/[×·∙]/g, '*')
+        .replace(/÷/g, '/')
+        .replace(/²/g, '^2').replace(/³/g, '^3')
+        .replace(/\*\*/g, '^');
+    }
+
+    function tokenize(expr){
+      const tokens = [];
+      let i = 0;
+      while(i < expr.length){
+        const ch = expr[i];
+        if(/\s/.test(ch)){ i++; continue; }
+        const num = expr.slice(i).match(/^(\d+\.?\d*|\.\d+)/);
+        if(num){ tokens.push({type:'num', value: parseFloat(num[0]), text: num[0]}); i += num[0].length; continue; }
+        if(/[a-zA-Z]/.test(ch)){ tokens.push({type:'var', value: ch.toLowerCase(), text: ch}); i++; continue; }
+        if('+-*/^()'.includes(ch)){ tokens.push({type:'op', value: ch, text: ch}); i++; continue; }
+        throw new ParseError(`Unexpected character "${ch}".`);
+      }
+      return tokens;
+    }
+
+    function parseExpression(src){
+      const tokens = tokenize(normalize(src));
+      if(tokens.length === 0) throw new ParseError('An equation side is empty.');
+      let pos = 0;
+      const peek = () => tokens[pos];
+      const isOp = (v) => peek() && peek().type === 'op' && peek().value === v;
+
+      function expr(){
+        let left = term();
+        while(isOp('+') || isOp('-')){
+          const op = tokens[pos++].value;
+          const right = term();
+          left = polyAdd(left, right, op === '+' ? 1 : -1);
+        }
+        return left;
+      }
+      function term(){
+        let left = unary();
+        for(;;){
+          if(isOp('*')){ pos++; left = polyMul(left, unary()); }
+          else if(isOp('/')){
+            pos++;
+            const d = unary();
+            if(!polyIsConst(d)) throw new ParseError('Division by an expression containing a variable is not supported.');
+            const dv = polyConstValue(d);
+            if(Math.abs(dv) < 1e-15) throw new ParseError('Division by zero.');
+            left = polyScale(left, 1 / dv);
+          }
+          else if(peek() && (peek().type === 'num' || peek().type === 'var' || isOp('('))){
+            left = polyMul(left, unary()); // implicit multiplication: 2x, 3(x+1), (x+1)(x-1)
+          }
+          else break;
+        }
+        return left;
+      }
+      function unary(){
+        if(isOp('-')){ pos++; return polyScale(unary(), -1); }
+        if(isOp('+')){ pos++; return unary(); }
+        return power();
+      }
+      function power(){
+        const base = primary();
+        if(isOp('^')){
+          pos++;
+          const ex = unary();
+          if(!polyIsConst(ex)) throw new ParseError('Exponents must be numbers.');
+          const n = polyConstValue(ex);
+          if(polyIsConst(base)){
+            const val = Math.pow(polyConstValue(base), n);
+            if(!isFinite(val)) throw new ParseError('A numeric power is undefined or too large.');
+            return polyConst(val);
+          }
+          if(n < 0 || Math.abs(n - Math.round(n)) > 1e-12) throw new ParseError('Variable exponents must be non-negative whole numbers.');
+          if(n > 20) throw new ParseError('Exponent is too large (max 20).');
+          let out = polyConst(1);
+          for(let i = 0; i < Math.round(n); i++) out = polyMul(out, base);
+          return out;
+        }
+        return base;
+      }
+      function primary(){
+        const t = peek();
+        if(!t) throw new ParseError('Unexpected end of expression.');
+        if(t.type === 'num'){ pos++; return polyConst(t.value); }
+        if(t.type === 'var'){ pos++; return polyVar(t.value); }
+        if(isOp('(')){
+          pos++;
+          const inner = expr();
+          if(!isOp(')')) throw new ParseError('Missing closing parenthesis ")".');
+          pos++;
+          return inner;
+        }
+        throw new ParseError(`Unexpected "${t.text}".`);
+      }
+
+      const result = expr();
+      if(pos < tokens.length){
+        const t = tokens[pos];
+        throw new ParseError(t.value === ')' ? 'Unmatched closing parenthesis ")".' : `Unexpected "${t.text}".`);
+      }
+      const vars = [...new Set(tokens.filter(t => t.type === 'var').map(t => t.value))];
+      return {poly: result, vars};
+    }
+
+    // =====================================================================
+    // Formatting
+    // =====================================================================
+    function fmt(n){
+      if(Math.abs(n) < 1e-12) return '0';
+      if(Math.abs(n - Math.round(n)) < 1e-9) return String(Math.round(n));
+      return String(parseFloat(n.toPrecision(10)));
+    }
+    // Exact-looking fraction when the value is a simple rational number
+    function fracOrDec(n){
+      const dec = fmt(n);
+      if(Math.abs(n - Math.round(n)) < 1e-9) return dec;
+      for(let d = 2; d <= 1000; d++){
+        const num = n * d;
+        if(Math.abs(num - Math.round(num)) < 1e-9 * Math.max(1, Math.abs(num))){
+          return `${Math.round(num)}/${d} ≈ ${dec}`;
+        }
+      }
+      return dec;
+    }
+    function paren(n){ const s = fmt(n); return n < 0 ? `(${s})` : s; }
+
+    function formatPoly(p){
+      const keys = Object.keys(p).sort((a, b) => {
+        const d = monoDegree(b) - monoDegree(a);
+        return d !== 0 ? d : a.localeCompare(b);
+      });
+      if(keys.length === 0) return '0';
+      return keys.map((k, i) => {
+        const c = p[k];
+        const sign = c < 0 ? (i ? ' − ' : '−') : (i ? ' + ' : '');
+        const abs = Math.abs(c);
+        const mono = k.replace(/\*/g, '');
+        if(k === '') return sign + fmt(abs);
+        return sign + (Math.abs(abs - 1) < 1e-12 ? '' : fmt(abs)) + mono;
+      }).join('');
+    }
+
+    function formatComplex(re, im){
+      const r = fmt(re), i = fmt(Math.abs(im));
+      const iPart = i === '1' ? 'i' : `${i}i`;
+      if(r === '0') return (im < 0 ? '−' : '') + iPart;
+      return `${r} ${im < 0 ? '−' : '+'} ${iPart}`;
+    }
+
+    // =====================================================================
+    // Solvers
+    // =====================================================================
+    function coeffsIn(p, v){
+      // p is univariate in v: returns {degree: coefficient}
+      const out = {};
+      for(const k in p){
+        const vars = monoParse(k);
+        const d = vars[v] || 0;
+        out[d] = (out[d] || 0) + p[k];
+      }
+      return out;
+    }
+
+    function evalPoly(p, values){
+      let total = 0;
+      for(const k in p){
+        let term = p[k];
+        const vars = monoParse(k);
+        for(const v in vars) term *= Math.pow(values[v], vars[v]);
+        total += term;
+      }
+      return total;
+    }
+
+    function solveLinear(c, v){
+      const a = c[1] || 0, b = c[0] || 0;
+      const steps = [];
+      steps.push('Equation is linear (degree 1).');
+      steps.push(`Write as a·${v} + b = 0 with a = ${fmt(a)}, b = ${fmt(b)}.`);
+      const x = -b / a;
+      steps.push(`Isolate ${v}: ${v} = −b / a = −${paren(b)} / ${paren(a)} = ${fracOrDec(x)}.`);
+      return {steps, result: `${v} = ${fracOrDec(x)}`, roots: [x]};
+    }
+
+    function solveQuadratic(c, v){
+      const a = c[2] || 0, b = c[1] || 0, cc = c[0] || 0;
+      const steps = [];
+      steps.push('Equation is quadratic (degree 2).');
+      steps.push(`Standard form: a·${v}² + b·${v} + c = 0 with a = ${fmt(a)}, b = ${fmt(b)}, c = ${fmt(cc)}.`);
+      steps.push('Compute discriminant: Δ = b² − 4ac.');
+      let disc = b*b - 4*a*cc;
+      const scale = Math.max(b*b, Math.abs(4*a*cc), 1);
+      if(Math.abs(disc) < 1e-12 * scale) disc = 0;
+      steps.push(`Δ = ${paren(b)}² − 4·${paren(a)}·${paren(cc)} = ${fmt(disc)}.`);
+      if(disc > 0){
+        const sq = Math.sqrt(disc);
+        // numerically stable form avoids cancellation
+        const q = -0.5 * (b + Math.sign(b || 1) * sq);
+        let x1 = q / a, x2 = q !== 0 ? cc / q : -x1;
+        if(x1 < x2){ const t = x1; x1 = x2; x2 = t; }
+        steps.push('Δ > 0 → two distinct real roots.');
+        steps.push(`${v} = (−b ± √Δ) / (2a) = (${fmt(-b)} ± ${fmt(sq)}) / ${paren(2*a)}.`);
+        steps.push(`${v}₁ = ${fracOrDec(x1)}, ${v}₂ = ${fracOrDec(x2)}.`);
+        return {steps, result: `${v}₁ = ${fracOrDec(x1)}, ${v}₂ = ${fracOrDec(x2)}`, roots: [x1, x2]};
+      } else if(disc === 0){
+        const x = -b / (2*a);
+        steps.push('Δ = 0 → one real (double) root.');
+        steps.push(`${v} = −b / (2a) = ${fmt(-b)} / ${paren(2*a)} = ${fracOrDec(x)}.`);
+        return {steps, result: `${v} = ${fracOrDec(x)} (double root)`, roots: [x]};
+      } else {
+        const sq = Math.sqrt(-disc);
+        const re = -b / (2*a);
+        const im = Math.abs(sq / (2*a));
+        steps.push('Δ < 0 → two complex conjugate roots.');
+        steps.push(`√Δ = √(${fmt(disc)}) = ${fmt(sq)}i.`);
+        steps.push(`${v} = (−b ± √Δ) / (2a) = (${fmt(-b)} ± ${fmt(sq)}i) / ${paren(2*a)}.`);
+        steps.push(`${v}₁ = ${formatComplex(re, im)}, ${v}₂ = ${formatComplex(re, -im)}.`);
+        return {steps, result: `${v}₁ = ${formatComplex(re, im)}, ${v}₂ = ${formatComplex(re, -im)}`, roots: []};
+      }
+    }
+
+    function splitEquation(raw, label){
+      const parts = raw.split('=');
+      if(parts.length !== 2) throw new ParseError(`${label}must contain exactly one "=" sign.`);
+      if(!parts[0].trim() || !parts[1].trim()) throw new ParseError(`${label}has an empty side.`);
       return parts;
     }
 
-    function parseSide(expr, variable){
-      expr = sanitize(expr);
-      const terms = splitTerms(expr);
-      const coeffs = {}; // degree -> numeric coefficient
-      for(const t of terms){
-        // match coefficient and power
-        // forms: 3x^2, -x^2, 4x, -x, 5
-        const varRegex = new RegExp('^([+-]?\d*\.?\d*)(?:\\*?)' + variable + '(?:\\^(\d+))?$','i');
-        const m = t.match(varRegex);
-        if(m){
-          let a = m[1];
-          let pow = m[2] ? parseInt(m[2],10) : 1;
-          if(a==='' || a==='+' ) a = '1';
-          if(a==='-') a = '-1';
-          const val = parseFloat(a);
-          coeffs[pow] = (coeffs[pow]||0) + val;
-        } else {
-          // constant term
-          const val = parseFloat(t);
-          if(!isNaN(val)) coeffs[0] = (coeffs[0]||0) + val;
-          else {
-            // try to detect forms like x (without explicit coefficient)
-            const justVar = new RegExp('^([+-]?)'+variable+'(?:\\^(\d+))?$','i');
-            const m2 = t.match(justVar);
-            if(m2){
-              const sign = m2[1] === '-' ? -1 : 1;
-              const pow = m2[2] ? parseInt(m2[2],10) : 1;
-              coeffs[pow] = (coeffs[pow]||0) + sign;
-            } else {
-              // unsupported token -> ignore
-            }
-          }
-        }
+    function solveSingle(raw, selectedVar){
+      const [lhs, rhs] = splitEquation(raw, 'The equation ');
+      const L = parseExpression(lhs), R = parseExpression(rhs);
+      const P = polyAdd(L.poly, R.poly, -1);
+      const lines = [];
+      lines.push(`Provided equation: ${raw}`);
+      lines.push(`Simplify left side: ${formatPoly(L.poly)}`);
+      lines.push(`Simplify right side: ${formatPoly(R.poly)}`);
+      lines.push(`Move all terms to the left: ${formatPoly(P)} = 0`);
+
+      const allVars = [...new Set(L.vars.concat(R.vars))].sort();
+      let v = selectedVar;
+      const remaining = polyVars(P);
+      if(allVars.length > 1){
+        throw new ParseError(`This equation has more than one variable (${allVars.join(', ')}). To solve a system, enter one equation per variable separated by ";" — e.g. 2x + y = 5; x − y = 1.`);
       }
-      return coeffs;
+      if(allVars.length === 1 && allVars[0] !== selectedVar){
+        v = allVars[0];
+        lines.splice(1, 0, `Detected variable: ${v}`);
+      }
+      if(remaining.length === 0){
+        const c = polyConstValue(P);
+        if(Math.abs(c) < 1e-12){
+          lines.push('After simplification the equation reduces to 0 = 0 — it holds for every value.');
+          return {lines, result: `Infinite solutions (every ${v} works)`, kind: 'Identity', v};
+        }
+        lines.push(`After simplification the equation reduces to ${fmt(c)} = 0, which is false.`);
+        return {lines, result: 'No solution', kind: 'Contradiction', v};
+      }
+      const c = coeffsIn(P, v);
+      const deg = polyDegree(P);
+      let sol;
+      if(deg === 1) sol = solveLinear(c, v);
+      else if(deg === 2) sol = solveQuadratic(c, v);
+      else {
+        lines.push(`Polynomial degree ${deg} is not currently supported by this tool (linear and quadratic only).`);
+        return {lines, result: 'Unsupported — degree > 2', kind: `Degree ${deg}`, v};
+      }
+      const out = lines.concat(sol.steps);
+      if(sol.roots.length){
+        const checks = sol.roots.map(r => `${v} = ${fmt(r)} gives ${fmt(evalPoly(P, {[v]: r}))}`);
+        out.push(`Check by substituting into ${formatPoly(P)}: ${checks.join('; ')}.`);
+      }
+      return {lines: out, result: sol.result, kind: deg === 1 ? 'Linear' : 'Quadratic', v};
     }
 
-    function combineSides(leftCoeffs, rightCoeffs){
-      const res = {};
-      // move right to left: left - right = 0
-      const degrees = new Set(Object.keys(leftCoeffs).concat(Object.keys(rightCoeffs)));
-      degrees.forEach(k=>{
-        const a = leftCoeffs[k]||0;
-        const b = rightCoeffs[k]||0;
-        const val = a - b;
-        if(Math.abs(val) > 1e-12) res[k] = val;
+    function solveSystem(equations){
+      const lines = [];
+      const polys = [];
+      equations.forEach((eq, i) => {
+        const [lhs, rhs] = splitEquation(eq, `Equation ${i + 1} `);
+        const P = polyAdd(parseExpression(lhs).poly, parseExpression(rhs).poly, -1);
+        if(polyDegree(P) > 1) throw new ParseError(`Equation ${i + 1} is not linear. Systems must contain only linear equations.`);
+        polys.push(P);
       });
-      return res;
-    }
+      const vars = [...new Set(polys.flatMap(polyVars))].sort();
+      if(vars.length === 0) throw new ParseError('The system contains no variables.');
 
-    function degreeOf(coeffs){
-      const keys = Object.keys(coeffs).map(k=>parseInt(k,10));
-      return keys.length ? Math.max(...keys) : -Infinity;
-    }
+      lines.push(`Provided system of ${equations.length} equations in ${vars.length} unknown${vars.length > 1 ? 's' : ''} (${vars.join(', ')}): ${equations.join('; ')}`);
+      // Standard form: Σ a_ij x_j = b_i
+      const A = polys.map(P => vars.map(v => P[v] || 0));
+      const b = polys.map(P => -(P[''] || 0));
+      const standard = polys.map((P, i) => {
+        const lhsPoly = Object.assign({}, P); delete lhsPoly[''];
+        return `(${i + 1}) ${formatPoly(lhsPoly)} = ${fmt(b[i])}`;
+      });
+      lines.push(`Standard form: ${standard.join(';  ')}`);
+      const matStr = (M) => M.map(r => `[ ${r.slice(0, vars.length).map(fmt).join(', ')} | ${fmt(r[vars.length])} ]`).join('  ');
+      const M = A.map((row, i) => row.concat([b[i]]));
+      lines.push(`Augmented matrix [A | b]: ${matStr(M)}`);
 
-    function formatPolynomial(coeffs, variable){
-      const degs = Object.keys(coeffs).map(k=>parseInt(k,10)).sort((a,b)=>b-a);
-      if(degs.length===0) return '0';
-      const parts = [];
-      for(const d of degs){
-        const c = coeffs[d];
-        const sign = c<0 ? '-' : (parts.length? '+' : '');
-        const absC = Math.abs(c);
-        if(d===0) parts.push(`${sign}${absC}`);
-        else if(d===1){
-          const coeffStr = Math.abs(absC - 1) < 1e-12 ? '' : absC;
-          parts.push(`${sign}${coeffStr}${variable}`);
-        } else {
-          const coeffStr = Math.abs(absC - 1) < 1e-12 ? '' : absC;
-          parts.push(`${sign}${coeffStr}${variable}^${d}`);
+      if(A.length === vars.length && (vars.length === 2 || vars.length === 3)){
+        const det = vars.length === 2
+          ? A[0][0]*A[1][1] - A[0][1]*A[1][0]
+          : A[0][0]*(A[1][1]*A[2][2]-A[1][2]*A[2][1]) - A[0][1]*(A[1][0]*A[2][2]-A[1][2]*A[2][0]) + A[0][2]*(A[1][0]*A[2][1]-A[1][1]*A[2][0]);
+        lines.push(`Determinant det(A) = ${fmt(det)}${Math.abs(det) > EPS ? ' ≠ 0 → a unique solution exists.' : ' → no unique solution (dependent or inconsistent).'}`);
+      }
+
+      // Gauss–Jordan elimination with partial pivoting
+      const rows = M.length, cols = vars.length;
+      const pivotCols = [];
+      let r = 0;
+      for(let col = 0; col < cols && r < rows; col++){
+        let best = r;
+        for(let i = r + 1; i < rows; i++) if(Math.abs(M[i][col]) > Math.abs(M[best][col])) best = i;
+        if(Math.abs(M[best][col]) < EPS) continue;
+        [M[r], M[best]] = [M[best], M[r]];
+        const pv = M[r][col];
+        for(let j = 0; j <= cols; j++) M[r][j] /= pv;
+        for(let i = 0; i < rows; i++){
+          if(i === r) continue;
+          const f = M[i][col];
+          if(Math.abs(f) < 1e-15) continue;
+          for(let j = 0; j <= cols; j++) M[i][j] -= f * M[r][j];
         }
+        pivotCols.push(col);
+        r++;
       }
-      return parts.join('');
+      for(const row of M) for(let j = 0; j <= cols; j++) if(Math.abs(row[j]) < 1e-11) row[j] = 0;
+      lines.push(`Gauss–Jordan elimination (reduced row echelon form): ${matStr(M)}`);
+
+      const inconsistent = M.some(row => row.slice(0, cols).every(x => Math.abs(x) < EPS) && Math.abs(row[cols]) > 1e-9);
+      if(inconsistent){
+        lines.push('A row reads 0 = (non-zero): the equations contradict each other.');
+        return {lines, result: 'No solution (inconsistent system)', kind: 'Linear system', v: vars.join(', ')};
+      }
+      if(pivotCols.length < cols){
+        const free = vars.filter((_, j) => !pivotCols.includes(j));
+        lines.push(`Rank ${pivotCols.length} < ${cols} unknowns → infinitely many solutions; free variable${free.length > 1 ? 's' : ''}: ${free.join(', ')}.`);
+        const parts = pivotCols.map((col, i) => {
+          const expr = {'': M[i][cols]};
+          vars.forEach((v, j) => { if(j !== col && Math.abs(M[i][j]) > EPS) expr[v] = -M[i][j]; });
+          return `${vars[col]} = ${formatPoly(polyClean(expr))}`;
+        });
+        const result = `Infinitely many solutions: ${parts.join(', ')}${parts.length ? ', ' : ''}${free.map(f => `${f} free`).join(', ')}`;
+        return {lines, result, kind: 'Linear system', v: vars.join(', ')};
+      }
+      const values = {};
+      pivotCols.forEach((col, i) => { values[vars[col]] = M[i][cols]; });
+      const result = vars.map(v => `${v} = ${fracOrDec(values[v])}`).join(', ');
+      lines.push(`Read off the solution: ${result}.`);
+      const residuals = polys.map((P, i) => `(${i + 1}) → ${fmt(evalPoly(P, values))}`);
+      lines.push(`Check by substitution (left − right): ${residuals.join(', ')}.`);
+      return {lines, result, kind: 'Linear system', v: vars.join(', ')};
     }
 
-    // --- Solvers ---
-    function solveLinear(coeffs, variable){
-      // ax + b = 0  => x = -b/a
-      const a = coeffs[1] || 0;
-      const b = coeffs[0] || 0;
-      const steps = [];
-      steps.push(`Equation is linear (degree 1).`);
-      steps.push(`Write as ${a}*${variable} + ${b} = 0.`);
-      if(Math.abs(a) < 1e-12){
-        if(Math.abs(b) < 1e-12) return {steps: steps.concat([ 'All real numbers satisfy the equation (identity).' ]), result: 'Infinite solutions'};
-        else return {steps: steps.concat([ 'No solution (contradiction, 0 = nonzero).' ]), result: 'No solution'};
-      }
-      const x = -b / a;
-      steps.push(`Isolate ${variable}: ${variable} = -(${b}) / (${a}) = ${x}.`);
-      return {steps, result: `${variable} = ${x}`};
-    }
-
-    function solveQuadratic(coeffs, variable){
-      const a = coeffs[2] || 0; const b = coeffs[1] || 0; const c = coeffs[0] || 0;
-      const steps = [];
-      steps.push('Equation is quadratic (degree 2).');
-      steps.push(`Standard form: ${a}*${variable}^2 + ${b}*${variable} + ${c} = 0.`);
-      if(Math.abs(a) < 1e-12){
-        steps.push('Leading coefficient a is zero; fall back to linear solver.');
-        return Object.assign({steps}, solveLinear({1:b,0:c}, variable));
-      }
-      steps.push('Compute discriminant: Δ = b^2 - 4ac.');
-      const disc = b*b - 4*a*c;
-      steps.push(`Δ = (${b})^2 - 4*(${a})*(${c}) = ${disc}.`);
-      if(disc > 1e-12){
-        const sqrt = Math.sqrt(disc);
-        const x1 = (-b + sqrt) / (2*a);
-        const x2 = (-b - sqrt) / (2*a);
-        steps.push(`Δ > 0 → two distinct real roots.`);
-        steps.push(`x = (-b ± √Δ) / (2a) = (-${b} ± ${sqrt}) / (${2*a}).`);
-        steps.push(`x₁ = ${x1}, x₂ = ${x2}.`);
-        return {steps, result: `x₁ = ${x1}, x₂ = ${x2}`};
-      } else if(Math.abs(disc) <= 1e-12){
-        const x = -b / (2*a);
-        steps.push('Δ = 0 → one real double root.');
-        steps.push(`x = -b / (2a) = ${x}.`);
-        return {steps, result: `x = ${x}`};
-      } else {
-        const sqrt = Math.sqrt(-disc);
-        const real = -b / (2*a);
-        const imag = sqrt / (2*a);
-        steps.push('Δ < 0 → two complex roots.');
-        steps.push(`x = ${real} ± ${imag}i`);
-        return {steps, result: `x = ${real} ± ${imag}i`};
-      }
-    }
-
-    // --- Main orchestration ---
+    // =====================================================================
+    // UI wiring
+    // =====================================================================
     const eqInput = document.getElementById('equation');
     const varSelect = document.getElementById('variable');
     const solveBtn = document.getElementById('solve');
@@ -209,82 +518,96 @@
     const output = document.getElementById('output');
     const meta = document.getElementById('meta');
     const resultArea = document.getElementById('resultArea');
+    const errorEl = document.getElementById('error');
+    const statusEl = document.getElementById('status');
     const exportTxt = document.getElementById('exportTxt');
     const copyBtn = document.getElementById('copy');
+    let solved = false;
+    let solvedInput = '';
+    let statusTimer = null;
 
-    function showSteps(lines, resultText){
+    function setStatus(msg){
+      statusEl.textContent = msg;
+      clearTimeout(statusTimer);
+      if(msg) statusTimer = setTimeout(() => { statusEl.textContent = ''; }, 3000);
+    }
+
+    function showError(msg){
+      solved = false;
+      output.hidden = true;
+      errorEl.textContent = msg;
+      errorEl.hidden = false;
+    }
+
+    function showSteps(lines, resultText, metaText){
+      errorEl.hidden = true;
       stepsEl.innerHTML = '';
       for(const s of lines){
         const li = document.createElement('li'); li.textContent = s; stepsEl.appendChild(li);
       }
+      meta.textContent = metaText || '';
       resultArea.textContent = resultText;
       output.hidden = false;
+      solved = true;
     }
 
     function solve(){
       const raw = eqInput.value.trim();
-      const variable = varSelect.value.trim();
-      if(!raw){ alert('Please enter an equation.'); return; }
-      // split by =
-      const parts = raw.split('=');
-      if(parts.length !== 2){ alert('Please enter exactly one "=" sign.'); return; }
-      const left = parts[0]; const right = parts[1];
-      // parse sides
-      const leftCoeffs = parseSide(left, variable);
-      const rightCoeffs = parseSide(right, variable);
-      const combined = combineSides(leftCoeffs, rightCoeffs);
-      const deg = degreeOf(combined);
+      setStatus('');
+      if(!raw){ showError('Please enter an equation.'); return; }
+      const equations = raw.split(/[;,\n]/).map(s => s.trim()).filter(Boolean);
+      try{
+        let sol;
+        if(equations.length > 1) sol = solveSystem(equations);
+        else sol = solveSingle(equations[0], varSelect.value.trim());
+        solvedInput = raw;
+        showSteps(sol.lines, sol.result, `Type: ${sol.kind} • Variable${sol.v.includes(',') ? 's' : ''}: ${sol.v}`);
+      }catch(err){
+        if(err instanceof ParseError) showError(err.message);
+        else { console.error(err); showError('Could not parse the equation. Check the syntax and try again.'); }
+      }
+    }
 
-      const lines = [];
-      lines.push(`Provided equation: ${raw}`);
-      lines.push(`Parsed left side coefficients: ${JSON.stringify(leftCoeffs)}`);
-      lines.push(`Parsed right side coefficients: ${JSON.stringify(rightCoeffs)}`);
-      lines.push(`Move all terms to left: ${formatPolynomial(combined, variable)} = 0`);
-
-      if(deg === -Infinity){
-        // no terms => 0 = 0
-        lines.push('After simplification, equation reduces to 0 = 0. All real numbers are solutions.');
-        showSteps(lines, 'Infinite solutions');
-        return;
-      }
-      if(deg === 0){
-        // constant = 0
-        const c = combined[0] || 0;
-        if(Math.abs(c) < 1e-12){ lines.push('0 = 0. Infinite solutions.'); showSteps(lines, 'Infinite solutions'); }
-        else { lines.push(`${c} = 0 is false. No solution.`); showSteps(lines, 'No solution'); }
-        return;
-      }
-      if(deg === 1){
-        const sol = solveLinear(combined, variable);
-        showSteps(lines.concat(sol.steps), sol.result);
-        return;
-      }
-      if(deg === 2){
-        const sol = solveQuadratic(combined, variable);
-        showSteps(lines.concat(sol.steps), sol.result);
-        return;
-      }
-      // degree >2 not supported
-      lines.push(`Polynomial degree ${deg} is not currently supported by this tool.`);
-      showSteps(lines, 'Unsupported — degree > 2');
+    function resultText(){
+      const text = ['Equation Solver Tool Results', '---', 'Input: ' + solvedInput, meta.textContent, '', 'Steps:'];
+      for(const li of stepsEl.querySelectorAll('li')) text.push('- ' + li.textContent);
+      text.push('', 'Result: ' + resultArea.textContent);
+      return text.join('\n');
     }
 
     solveBtn.addEventListener('click', solve);
-    eqInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') solve(); });
+    eqInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); solve(); } });
 
     exportTxt.addEventListener('click', ()=>{
-      if(output.hidden){ alert('Solve an equation first.'); return; }
-      const text = ['Equation Solver Tool Results', '---', 'Input: ' + eqInput.value, '', 'Steps:'];
-      for(const li of stepsEl.querySelectorAll('li')) text.push('- ' + li.textContent);
-      text.push('', 'Result: ' + resultArea.textContent);
-      const blob = new Blob([text.join('\n')], {type:'text/plain'});
-      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'equation_result.txt'; a.click();
+      if(!solved){ setStatus('Solve an equation first.'); return; }
+      const blob = new Blob([resultText()], {type:'text/plain'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'equation_result.txt';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setStatus('Exported equation_result.txt');
     });
 
+    function fallbackCopy(text){
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      let ok = false;
+      try{ ok = document.execCommand('copy'); }catch(e){ ok = false; }
+      ta.remove();
+      return ok;
+    }
+
     copyBtn.addEventListener('click', ()=>{
-      if(output.hidden){ alert('Solve an equation first.'); return; }
-      const out = resultArea.textContent + '\n\nSteps:\n' + Array.from(stepsEl.querySelectorAll('li')).map(li=>li.textContent).join('\n');
-      navigator.clipboard.writeText(out).then(()=>alert('Copied to clipboard.'), ()=>alert('Copy failed.'));
+      if(!solved){ setStatus('Solve an equation first.'); return; }
+      const out = resultText();
+      const done = (ok) => setStatus(ok ? 'Copied to clipboard.' : 'Copy failed — select the text manually.');
+      if(navigator.clipboard && window.isSecureContext){
+        navigator.clipboard.writeText(out).then(() => done(true), () => done(fallbackCopy(out)));
+      } else {
+        done(fallbackCopy(out));
+      }
     });
 
     // small example
