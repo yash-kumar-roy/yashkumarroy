@@ -8,23 +8,27 @@
     :root{
       --bg:#0f1724; --panel:#0b1220; --muted:#94a3b8; --accent:#7c3aed;
     }
-    html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial}
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial}
     body{background:linear-gradient(180deg,var(--bg),#071024);color:#e6eef8;display:flex;align-items:stretch}
     /* full-screen app */
-    #app{flex:1;display:grid;grid-template-columns:1fr;grid-template-rows:auto 1fr;gap:0;height:100vh}
+    #app{flex:1;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;gap:0;height:100vh;height:100dvh;min-width:0}
 
-    header{height:64px;display:flex;align-items:center;gap:12px;padding:10px 16px;background:rgba(255,255,255,0.02);backdrop-filter:blur(6px)}
+    header{min-height:64px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 16px;background:rgba(255,255,255,0.02);backdrop-filter:blur(6px)}
     header h1{margin:0;font-size:16px;font-weight:600}
-    .toolbar{display:flex;align-items:center;gap:8px;margin-left:16px}
-    .btn{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted);padding:8px;border-radius:8px;cursor:pointer;font-size:13px}
+    .toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-left:16px}
+    .btn{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted);padding:8px;border-radius:8px;cursor:pointer;font-size:13px;font-family:inherit;white-space:nowrap}
+    .btn:hover{color:#e6eef8;border-color:rgba(255,255,255,0.14)}
+    .btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
     .btn.active{border-color:var(--accent);color:#fff;box-shadow:0 4px 18px rgba(124,58,237,0.18)}
     .color-swatch{width:28px;height:28px;border-radius:6px;border:1px solid rgba(255,255,255,0.06);cursor:pointer}
-    .right{margin-left:auto;display:flex;gap:8px}
+    .right{margin-left:auto;display:flex;flex-wrap:wrap;gap:8px}
+    input[type=color]{width:32px;height:28px;padding:0;border:0;background:transparent;cursor:pointer}
 
-    main{position:relative;display:flex;flex-direction:row;flex:1;overflow:hidden}
+    main{position:relative;display:flex;flex-direction:row;flex:1;overflow:hidden;min-height:0}
     /* left: canvas full area */
-    #board-wrap{flex:1;position:relative;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));}
-    canvas{width:100%;height:100%;display:block;touch-action:none}
+    #board-wrap{flex:1;position:relative;min-width:0;min-height:0;overflow:hidden;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));}
+    canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:crosshair;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 
     /* small floating panel */
     .panel{position:absolute;left:12px;top:12px;background:var(--panel);padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,0.03);box-shadow:0 6px 30px rgba(2,6,23,0.6)}
@@ -32,16 +36,33 @@
     .label{font-size:12px;color:var(--muted)}
 
     /* bottom mini toolbar */
-    footer{height:56px;display:flex;align-items:center;padding:8px 12px;background:rgba(0,0,0,0.12);gap:8px}
+    footer{min-height:44px;display:flex;align-items:center;padding:8px 12px;background:rgba(0,0,0,0.12);gap:8px}
+    #board-wrap .panel{pointer-events:none}
 
     /* modal */
-    .modal-backdrop{position:fixed;inset:0;background:rgba(2,6,23,0.6);display:none;align-items:center;justify-content:center}
-    .modal{background:linear-gradient(180deg,#041226,#071a2e);padding:16px;border-radius:12px;border:1px solid rgba(255,255,255,0.04);width:640px;max-width:92%}
+    .modal-backdrop{position:fixed;inset:0;background:rgba(2,6,23,0.6);display:none;align-items:center;justify-content:center;z-index:10;padding:12px}
+    .modal{background:linear-gradient(180deg,#041226,#071a2e);padding:16px;border-radius:12px;border:1px solid rgba(255,255,255,0.04);width:640px;max-width:100%;max-height:100%;overflow:auto}
+    .modal-cols{display:flex;gap:8px;margin-top:8px}
+    .modal-cols > div{flex:1;min-width:0}
+    .modal-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;justify-content:flex-end}
     .modal h3{margin:0 0 8px 0}
-    textarea{width:100%;height:120px;font-family:monospace;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.04);background:#071428;color:#cfe8ff}
+    textarea{display:block;resize:vertical;width:100%;height:120px;font-family:monospace;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.04);background:#071428;color:#cfe8ff}
     input[type=range]{width:120px}
 
-    @media (max-width:700px){header h1{font-size:14px}.panel{left:6px;top:6px}}
+    @media (max-width:700px){
+      header{padding:8px 10px;gap:6px}
+      header h1{font-size:14px;width:100%}
+      .toolbar{margin-left:0;gap:6px}
+      .right{margin-left:0;gap:6px}
+      .btn{padding:6px 8px;font-size:12px}
+      .panel{left:6px;top:6px}
+      #board-wrap .panel{padding:6px 8px;right:6px !important;top:6px !important}
+      input[type=range]{width:90px}
+      footer{font-size:12px;padding:6px 10px}
+      footer > div{font-size:12px !important}
+      .modal-cols{flex-direction:column}
+      textarea{height:90px}
+    }
   </style>
 </head>
 <body>
@@ -49,23 +70,23 @@
     <header>
       <h1>Online Whiteboard</h1>
       <div class="toolbar" role="toolbar" aria-label="tools">
-        <button id="penBtn" class="btn active" title="Pen">✏️ Pen</button>
-        <button id="eraserBtn" class="btn" title="Eraser">🧽 Eraser</button>
+        <button type="button" id="penBtn" class="btn active" title="Pen">✏️ Pen</button>
+        <button type="button" id="eraserBtn" class="btn" title="Eraser">🧽 Eraser</button>
         <div class="panel" style="position:static;padding:6px;display:flex;align-items:center;gap:8px;border-radius:8px">
           <span class="label">Color</span>
-          <input id="colorPicker" type="color" value="#ffffff" title="Stroke color">
+          <input id="colorPicker" type="color" value="#ffffff" title="Stroke color" aria-label="Stroke color">
           <span class="label">Size</span>
-          <input id="sizeRange" type="range" min="1" max="60" value="4">
+          <input id="sizeRange" type="range" min="1" max="60" value="4" aria-label="Brush size">
         </div>
-        <button id="undoBtn" class="btn" title="Undo last local stroke">↶ Undo</button>
-        <button id="clearBtn" class="btn" title="Clear board">Clear</button>
+        <button type="button" id="undoBtn" class="btn" title="Undo last local stroke">↶ Undo</button>
+        <button type="button" id="clearBtn" class="btn" title="Clear board">Clear</button>
       </div>
 
       <div class="right">
-        <button id="exportBtn" class="btn" title="Save as PNG">💾 Save</button>
-        <button id="exportJson" class="btn" title="Export session JSON">⬇️ Export</button>
-        <button id="importJson" class="btn" title="Import session JSON">⬆️ Import</button>
-        <button id="collabBtn" class="btn" title="Collaborate (Peer-to-peer)">🔗 Collaborate</button>
+        <button type="button" id="exportBtn" class="btn" title="Save as PNG">💾 Save</button>
+        <button type="button" id="exportJson" class="btn" title="Export session JSON">⬇️ Export</button>
+        <button type="button" id="importJson" class="btn" title="Import session JSON">⬆️ Import</button>
+        <button type="button" id="collabBtn" class="btn" title="Collaborate (Peer-to-peer)">🔗 Collaborate</button>
       </div>
     </header>
 
@@ -91,21 +112,21 @@
       <h3 id="modalTitle">Collaborate (Peer-to-peer)</h3>
       <div id="modalBody">
         <p style="color:var(--muted);font-size:13px">This mode uses WebRTC data channels. To connect two browsers without a signaling server, copy-paste the Offer/Answer text between peers.</p>
-        <div style="display:flex;gap:8px;margin-top:8px;">
-          <div style="flex:1">
+        <div class="modal-cols">
+          <div>
             <div class="label">Local (Offer / Answer)</div>
             <textarea id="localText" placeholder="Offer / Answer appears here"></textarea>
           </div>
-          <div style="flex:1">
+          <div>
             <div class="label">Remote (Paste other's SDP here)</div>
             <textarea id="remoteText" placeholder="Paste remote Offer / Answer here"></textarea>
           </div>
         </div>
-        <div style="display:flex;gap:8px;margin-top:8px;justify-content:flex-end">
-          <button id="createOffer" class="btn">Create Offer</button>
-          <button id="createAnswer" class="btn">Create Answer</button>
-          <button id="applyRemote" class="btn">Apply Remote</button>
-          <button id="closeModal" class="btn">Close</button>
+        <div class="modal-actions">
+          <button type="button" id="createOffer" class="btn">Create Offer</button>
+          <button type="button" id="createAnswer" class="btn">Create Answer</button>
+          <button type="button" id="applyRemote" class="btn">Apply Remote</button>
+          <button type="button" id="closeModal" class="btn">Close</button>
         </div>
       </div>
     </div>
@@ -115,21 +136,36 @@
     // -- Canvas setup
     const canvas = document.getElementById('board');
     const wrap = document.getElementById('board-wrap');
+    const ctx = canvas.getContext('2d',{alpha:true});
+    const EXPORT_BG = '#0b1424';
+    let cssW = 0, cssH = 0;
+
+    // Size the backing store to the element's CSS size * devicePixelRatio so strokes stay crisp.
+    // Strokes are stored in CSS pixels and re-rendered, so resizing never loses the drawing.
     function fit() {
       const dpr = window.devicePixelRatio || 1;
-      canvas.width = Math.floor(wrap.clientWidth * dpr);
-      canvas.height = Math.floor(wrap.clientHeight * dpr);
-      canvas.style.width = wrap.clientWidth + 'px';
-      canvas.style.height = wrap.clientHeight + 'px';
+      const w = Math.max(1, Math.round(wrap.clientWidth));
+      const h = Math.max(1, Math.round(wrap.clientHeight));
+      const bw = Math.round(w * dpr), bh = Math.round(h * dpr);
+      if (bw === canvas.width && bh === canvas.height && w === cssW && h === cssH) return;
+      cssW = w; cssH = h;
+      canvas.width = bw;
+      canvas.height = bh;
       ctx.setTransform(dpr,0,0,dpr,0,0);
       redrawAll();
     }
+    if (window.ResizeObserver) new ResizeObserver(()=> fit()).observe(wrap);
     window.addEventListener('resize', fit);
-    const ctx = canvas.getContext('2d',{alpha:true});
-    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    // re-fit if the page is moved to a screen with a different pixel ratio / zoom changes
+    (function watchDpr(){
+      if(!window.matchMedia) return;
+      const mq = matchMedia('(resolution: '+(window.devicePixelRatio||1)+'dppx)');
+      const onChange = ()=>{ fit(); watchDpr(); };
+      if(mq.addEventListener) mq.addEventListener('change', onChange, {once:true});
+    })();
 
     // drawing state
-    let drawing=false, last=null;
+    let drawing=false, last=null, activePointer=null;
     let tool='pen';
     const strokes = []; // list of {tool,color,size,points}
     let currentStroke = null;
@@ -158,26 +194,29 @@
     function setActiveButton(which){
       penBtn.classList.toggle('active', which==='pen');
       eraserBtn.classList.toggle('active', which==='eraser');
+      penBtn.setAttribute('aria-pressed', which==='pen');
+      eraserBtn.setAttribute('aria-pressed', which==='eraser');
+      canvas.style.cursor = which==='eraser' ? 'cell' : 'crosshair';
     }
+    function setTool(t){ tool = t; setActiveButton(t); }
 
-    penBtn.onclick = ()=>{ tool='pen'; setActiveButton('pen'); }
-    eraserBtn.onclick = ()=>{ tool='eraser'; setActiveButton('eraser'); }
-    sizeRange.oninput = ()=>{};
+    penBtn.onclick = ()=> setTool('pen');
+    eraserBtn.onclick = ()=> setTool('eraser');
 
     function clientPoint(e){
       const rect = canvas.getBoundingClientRect();
-      const x = (e.clientX ?? e.touches?.[0]?.clientX) - rect.left;
-      const y = (e.clientY ?? e.touches?.[0]?.clientY) - rect.top;
-      return {x,y};
+      return {x: Math.round((e.clientX - rect.left)*10)/10, y: Math.round((e.clientY - rect.top)*10)/10};
     }
 
     function beginStroke(pt){
       drawing = true;
       currentStroke = {tool, color:colorPicker.value, size: +sizeRange.value, points:[pt], id:Date.now()+"-"+Math.random().toString(36).slice(2)};
       last = pt;
+      drawDot(pt, currentStroke);
     }
     function continueStroke(pt){
       if(!drawing || !currentStroke) return;
+      if(last && Math.abs(pt.x-last.x) < 0.5 && Math.abs(pt.y-last.y) < 0.5) return;
       currentStroke.points.push(pt);
       drawSegment(last, pt, currentStroke);
       last = pt;
@@ -188,183 +227,243 @@
       if(!drawing || !currentStroke) return;
       strokes.push(currentStroke);
       sendMessage({type:'stroke-end', stroke: currentStroke});
-      drawing=false; currentStroke=null; last=null;
+      drawing=false; currentStroke=null; last=null; activePointer=null;
+      scheduleSave();
     }
 
-    function drawSegment(a,b,s){
-      ctx.save();
+    function applyStyle(s){
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
       if(s.tool==='eraser'){
         ctx.globalCompositeOperation = 'destination-out';
-        ctx.strokeStyle = 'rgba(0,0,0,1)';
+        ctx.strokeStyle = ctx.fillStyle = 'rgba(0,0,0,1)';
       } else {
         ctx.globalCompositeOperation = 'source-over';
-        ctx.strokeStyle = s.color;
+        ctx.strokeStyle = ctx.fillStyle = s.color || '#ffffff';
       }
-      ctx.lineWidth = s.size;
+      ctx.lineWidth = s.size || 4;
+    }
+    function drawDot(p, s){
+      ctx.save(); applyStyle(s);
+      ctx.beginPath(); ctx.arc(p.x, p.y, (s.size||4)/2, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+    function drawSegment(a,b,s){
+      ctx.save(); applyStyle(s);
       ctx.beginPath();
       ctx.moveTo(a.x, a.y);
       ctx.lineTo(b.x, b.y);
       ctx.stroke();
       ctx.restore();
     }
-
-    // redraw all strokes (used on resize)
-    function redrawAll(){
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      for(const s of strokes){
-        for(let i=1;i<s.points.length;i++) drawSegment(s.points[i-1], s.points[i], s);
-      }
+    function drawStroke(s){
+      const pts = s.points || [];
+      if(!pts.length) return;
+      if(pts.length===1){ drawDot(pts[0], s); return; }
+      ctx.save(); applyStyle(s);
+      ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+      for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.stroke(); ctx.restore();
     }
 
-    // pointer events
+    // redraw all strokes (used on resize / undo / import)
+    function redrawAll(){
+      ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,canvas.width,canvas.height); ctx.restore();
+      for(const s of strokes) drawStroke(s);
+      for(const id in remoteTemp) drawStroke(remoteTemp[id]);
+      if(currentStroke) drawStroke(currentStroke);
+    }
+
+    // pointer events (mouse, touch and pen)
     canvas.addEventListener('pointerdown', (e) => {
-      canvas.setPointerCapture(e.pointerId);
+      if(e.pointerType==='mouse' && e.button!==0) return;
+      if(drawing) return; // ignore extra fingers while a stroke is in progress
+      e.preventDefault();
+      fit(); // cheap no-op unless the board size changed without a resize notification
+      activePointer = e.pointerId;
+      try{ canvas.setPointerCapture(e.pointerId); }catch(err){}
       const pt = clientPoint(e);
       beginStroke(pt);
-      sendMessage({type:'stroke-start', strokeMeta:{tool, color:colorPicker.value, size:+sizeRange.value, id: currentStroke.id}});
+      sendMessage({type:'stroke-start', strokeMeta:{tool, color:colorPicker.value, size:+sizeRange.value, id: currentStroke.id}, point: pt});
     });
     canvas.addEventListener('pointermove', (e) => {
-      if(!drawing) return;
-      continueStroke(clientPoint(e));
+      if(!drawing || e.pointerId!==activePointer) return;
+      e.preventDefault();
+      const evs = (e.getCoalescedEvents && e.getCoalescedEvents().length) ? e.getCoalescedEvents() : [e];
+      for(const ce of evs) continueStroke(clientPoint(ce));
     });
-    canvas.addEventListener('pointerup', (e) => {
-      canvas.releasePointerCapture(e.pointerId);
+    function finishPointer(e){
+      if(e.pointerId!==activePointer) return;
+      try{ canvas.releasePointerCapture(e.pointerId); }catch(err){}
       endStroke();
-    });
-    canvas.addEventListener('pointercancel', ()=> endStroke());
+    }
+    canvas.addEventListener('pointerup', finishPointer);
+    canvas.addEventListener('pointercancel', finishPointer);
+    canvas.addEventListener('lostpointercapture', finishPointer);
+    // stop iOS Safari from scrolling / zooming the page while drawing
+    canvas.addEventListener('touchstart', (e)=> e.preventDefault(), {passive:false});
+    canvas.addEventListener('touchmove', (e)=> e.preventDefault(), {passive:false});
+    canvas.addEventListener('contextmenu', (e)=> e.preventDefault());
 
     // buttons
     clearBtn.onclick = ()=>{
+      if(!strokes.length) return;
       if(!confirm('Clear the board for everyone?')) return;
       strokes.length=0; redrawAll();
       sendMessage({type:'clear'});
+      scheduleSave();
     }
     undoBtn.onclick = ()=>{
-      // undo last local stroke
-      if(strokes.length){ strokes.pop(); redrawAll(); sendMessage({type:'undo'}); }
+      // undo last stroke
+      if(strokes.length){ strokes.pop(); redrawAll(); sendMessage({type:'undo'}); scheduleSave(); }
     }
-    exportBtn.onclick = ()=>{ // save as PNG
-      const url = canvas.toDataURL('image/png');
-      const a=document.createElement('a'); a.href=url; a.download='whiteboard.png'; a.click();
+    function downloadUrl(url, name, revoke){
+      const a=document.createElement('a'); a.href=url; a.download=name; a.style.display='none';
+      document.body.appendChild(a); a.click(); a.remove();
+      if(revoke) setTimeout(()=> URL.revokeObjectURL(url), 2000);
+    }
+    exportBtn.onclick = ()=>{ // save as PNG (flattened onto the board background so it's visible in any viewer)
+      const out = document.createElement('canvas');
+      out.width = canvas.width; out.height = canvas.height;
+      const o = out.getContext('2d');
+      o.fillStyle = EXPORT_BG; o.fillRect(0,0,out.width,out.height);
+      o.drawImage(canvas, 0, 0);
+      if(out.toBlob) out.toBlob(b=>{ if(b) downloadUrl(URL.createObjectURL(b), 'whiteboard.png', true); }, 'image/png');
+      else downloadUrl(out.toDataURL('image/png'), 'whiteboard.png', false);
     }
     exportJson.onclick = ()=>{
       const payload = JSON.stringify({strokes}, null, 2);
       const blob = new Blob([payload],{type:'application/json'});
-      const a=document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='whiteboard.json'; a.click();
+      downloadUrl(URL.createObjectURL(blob), 'whiteboard.json', true);
+    }
+    function validStrokes(arr){
+      return Array.isArray(arr) ? arr.filter(s=> s && Array.isArray(s.points) && s.points.every(p=> p && isFinite(p.x) && isFinite(p.y))) : null;
     }
     importJson.onclick = ()=>{
       const input=document.createElement('input'); input.type='file'; input.accept='.json,application/json';
+      input.style.display='none'; document.body.appendChild(input);
       input.onchange = async (ev)=>{
-        const f = ev.target.files[0]; if(!f) return;
-        const txt = await f.text();
-        try{ const obj = JSON.parse(txt); if(Array.isArray(obj.strokes)){
-          strokes.length=0; for(const s of obj.strokes) strokes.push(s); redrawAll(); sendMessage({type:'import', strokes: obj.strokes});
-        } else alert('Invalid file'); } catch(err){alert('Parse error: '+err.message)}
+        const f = ev.target.files[0]; input.remove(); if(!f) return;
+        try{
+          const txt = await f.text();
+          const obj = JSON.parse(txt);
+          const list = validStrokes(obj && obj.strokes);
+          if(list){
+            strokes.length=0; for(const s of list) strokes.push(s); redrawAll(); sendMessage({type:'import', strokes: list}); scheduleSave();
+          } else alert('Invalid file: expected {"strokes": [...]}');
+        } catch(err){ alert('Parse error: '+err.message); }
       };
       input.click();
     }
 
-    // simple local persistence
-    window.addEventListener('beforeunload', ()=> localStorage.setItem('wb_strokes', JSON.stringify(strokes)));
-    try{ const saved = JSON.parse(localStorage.getItem('wb_strokes')||'null'); if(saved && Array.isArray(saved)) { saved.forEach(s=>strokes.push(s)); }
+    // simple local persistence (guarded: storage can be unavailable in sandboxed iframes / private mode)
+    const STORE_KEY = 'wb_strokes';
+    let saveTimer = null;
+    function saveNow(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(strokes)); }catch(e){} }
+    function scheduleSave(){ clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 400); }
+    window.addEventListener('pagehide', saveNow);
+    window.addEventListener('beforeunload', saveNow);
+    try{
+      const saved = validStrokes(JSON.parse(localStorage.getItem(STORE_KEY)||'null'));
+      if(saved) saved.forEach(s=>strokes.push(s));
     } catch(e){ }
 
+    const remoteTemp = {};
     fit(); // initial size
 
     // ====== Collaboration: WebRTC DataChannel with manual signaling (copy/paste) ======
-    let pc = null; let dc = null; let peersCount = 0;
+    let pc = null; let dc = null; let peersCount = 0; let isOfferer = false;
     function setStatus(s){ statusEl.textContent = s; }
     function setPeers(n){ peersEl.textContent = n; }
 
-    collabBtn.onclick = ()=>{ modal.style.display='flex'; }
-    closeModal.onclick = ()=>{ modal.style.display='none'; }
+    function openModal(){ modal.style.display='flex'; setTimeout(()=> createOffer.focus(), 0); }
+    function hideModal(){ modal.style.display='none'; collabBtn.focus(); }
+    collabBtn.onclick = openModal;
+    closeModal.onclick = hideModal;
 
     function ensurePC(){
-      if(pc) return pc;
+      if(pc && pc.connectionState!=='closed' && pc.connectionState!=='failed') return pc;
+      if(!window.RTCPeerConnection){ throw new Error('WebRTC is not supported in this browser.'); }
       pc = new RTCPeerConnection();
-      pc.onicecandidate = (e)=>{
-        // append trimmed local description whenever ICE candidate changes
-        localText.value = JSON.stringify(pc.localDescription);
+      pc.onicecandidate = ()=>{
+        // update local description as ICE candidates are gathered
+        if(pc.localDescription) localText.value = JSON.stringify(pc.localDescription);
       };
-      pc.ondatachannel = (ev)=>{
-        setupDC(ev.channel);
-      };
-      pc.onconnectionstatechange = ()=>{
-        setStatus(pc.connectionState);
-      };
+      pc.ondatachannel = (ev)=>{ setupDC(ev.channel); };
+      pc.onconnectionstatechange = ()=>{ setStatus(pc.connectionState); };
       return pc;
     }
     function setupDC(channel){
       dc = channel;
-      dc.onopen = ()=>{ setStatus('connected'); }
-      dc.onclose = ()=>{ setStatus('closed'); }
       dc.onmessage = (ev)=>{ try{ const msg = JSON.parse(ev.data); handleRemoteMessage(msg); } catch(e){} };
-      // show peers count locally
-      dc.onopen = ()=>{ peersCount = 1; setPeers(peersCount); setStatus('connected'); };
+      dc.onopen = ()=>{
+        peersCount = 1; setPeers(peersCount); setStatus('connected');
+        // the peer who created the offer shares the current board with the newcomer
+        if(isOfferer && strokes.length) sendMessage({type:'import', strokes});
+      };
       dc.onclose = ()=>{ peersCount = 0; setPeers(peersCount); setStatus('disconnected'); };
     }
 
     createOffer.onclick = async ()=>{
-      const pc = ensurePC();
-      const channel = pc.createDataChannel('whiteboard');
-      setupDC(channel);
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      // localText will be filled by onicecandidate as candidates arrive; also set immediately
-      localText.value = JSON.stringify(pc.localDescription);
-      alert('Share the Offer text with your peer. They will paste their Answer back here.');
+      try{
+        const pc = ensurePC();
+        isOfferer = true;
+        const channel = pc.createDataChannel('whiteboard');
+        setupDC(channel);
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        // localText will be updated by onicecandidate as candidates arrive; also set immediately
+        localText.value = JSON.stringify(pc.localDescription);
+        alert('Share the Offer text with your peer. They will paste their Answer back here.');
+      } catch(err){ alert('Could not create offer: '+(err.message||err)); }
     };
 
     createAnswer.onclick = async ()=>{
       // Assumes remoteText contains an offer
-      const pc = ensurePC();
+      if(!remoteText.value.trim()) return alert('Paste the Offer from your peer into the right box first');
       try{
+        const pc = ensurePC();
+        isOfferer = false;
         const offer = JSON.parse(remoteText.value);
         await pc.setRemoteDescription(offer);
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
         localText.value = JSON.stringify(pc.localDescription);
         alert('Send the Answer text back to the peer who created the Offer.');
-      } catch(err){ alert('Invalid offer: '+err); }
+      } catch(err){ alert('Invalid offer: '+(err.message||err)); }
     };
 
     applyRemote.onclick = async ()=>{
-      if(!remoteText.value) return alert('Paste remote SDP into the right box first');
-      const pc = ensurePC();
+      if(!remoteText.value.trim()) return alert('Paste remote SDP into the right box first');
       try{
+        const pc = ensurePC();
         const obj = JSON.parse(remoteText.value);
         await pc.setRemoteDescription(obj);
         alert('Remote applied. If both peers completed steps, connection should go to "connected".');
-      } catch(err){ alert('Failed to apply remote: '+err); }
+      } catch(err){ alert('Failed to apply remote: '+(err.message||err)); }
     };
 
     function sendMessage(msg){
-      // send via DataChannel when available
+      // send via DataChannel when available (local state is already updated by the caller)
       if(dc && dc.readyState==='open'){
         try{ dc.send(JSON.stringify(msg)); } catch(e){ console.warn('send failed',e); }
       }
-      // also apply locally to keep consistent across browser instances
-      applyRemoteMessageLocally(msg, /*originLocal=*/true);
     }
 
     // When receiving a remote message, apply it
     function handleRemoteMessage(msg){
-      applyRemoteMessageLocally(msg, /*originLocal=*/false);
-    }
-
-    function applyRemoteMessageLocally(msg, originLocal){
       switch(msg.type){
         case 'stroke-start':{
           // create a temporary stroke container
           const meta = msg.strokeMeta || {};
-          const s = {tool: meta.tool || 'pen', color: meta.color || '#fff', size: meta.size||4, points:[], id: meta.id || ('r-'+Date.now())};
-          // store in an ephemeral map by id
-          remoteTemp[msg.strokeMeta?.id||s.id] = s;
+          const s = {tool: meta.tool || 'pen', color: meta.color || '#fff', size: meta.size||4, points: msg.point ? [msg.point] : [], id: meta.id || ('r-'+Date.now())};
+          remoteTemp[s.id] = s;
+          if(msg.point) drawDot(msg.point, s);
           break;
         }
         case 'stroke-part':{
           const id = msg.strokeId;
           const p = msg.point;
+          if(!p) break;
           let s = remoteTemp[id];
           if(!s){ // if not exist, create generic
             s = {tool:'pen',color:'#fff',size:4,points:[],id}; remoteTemp[id]=s;
@@ -376,46 +475,49 @@
         }
         case 'stroke-end':{
           const s = msg.stroke;
-          if(s){
+          if(s && Array.isArray(s.points)){
             strokes.push(s);
-            // clean remote temp
             delete remoteTemp[s.id];
+            scheduleSave();
           }
           break;
         }
         case 'clear':{
-          strokes.length=0; redrawAll(); break;
+          strokes.length=0; for(const k in remoteTemp) delete remoteTemp[k]; redrawAll(); scheduleSave(); break;
         }
         case 'undo':{
-          if(strokes.length){ strokes.pop(); redrawAll(); }
+          if(strokes.length){ strokes.pop(); redrawAll(); scheduleSave(); }
           break;
         }
         case 'import':{
-          if(Array.isArray(msg.strokes)){
-            strokes.length=0; for(const s of msg.strokes) strokes.push(s); redrawAll();
-          }
+          const list = validStrokes(msg.strokes);
+          if(list){ strokes.length=0; for(const s of list) strokes.push(s); redrawAll(); scheduleSave(); }
           break;
         }
       }
     }
 
-    const remoteTemp = {};
-
-    // keyboard shortcuts
-    window.addEventListener('keydown', (e)=>{
-      if((e.ctrlKey||e.metaKey) && e.key==='s'){ e.preventDefault(); exportBtn.click(); }
-      if((e.ctrlKey||e.metaKey) && e.key==='z'){ e.preventDefault(); undoBtn.click(); }
-      if(e.key==='e') { tool='eraser'; setActiveButton('eraser'); }
-      if(e.key==='p') { tool='pen'; setActiveButton('pen'); }
+    // keyboard shortcuts (ignored while typing in the collaboration text boxes)
+    document.addEventListener('keydown', (e)=>{
+      const t = e.target;
+      const typing = t && (t.tagName==='TEXTAREA' || t.tagName==='INPUT' && t.type!=='range' && t.type!=='color' || t.isContentEditable);
+      if(e.key==='Escape' && modal.style.display==='flex'){ hideModal(); return; }
+      if(typing) return;
+      const k = (e.key||'').toLowerCase();
+      if((e.ctrlKey||e.metaKey) && k==='s'){ e.preventDefault(); exportBtn.click(); return; }
+      if((e.ctrlKey||e.metaKey) && k==='z' && !e.shiftKey){ e.preventDefault(); undoBtn.click(); return; }
+      if(e.ctrlKey||e.metaKey||e.altKey) return;
+      if(k==='e') setTool('eraser');
+      if(k==='p') setTool('pen');
     });
 
-    // small UX: click canvas with two fingers to toggle eraser
-    canvas.addEventListener('dblclick', ()=>{ tool = tool==='pen'?'eraser':'pen'; setActiveButton(tool); });
+    // small UX: double-click / double-tap the canvas to toggle eraser
+    canvas.addEventListener('dblclick', ()=>{ setTool(tool==='pen'?'eraser':'pen'); });
 
-    // initial instructions as small overlay (handled via footer)
+    setActiveButton(tool);
 
-    // accessibility: focus management for modal
-    modal.addEventListener('click', (ev)=>{ if(ev.target===modal) modal.style.display='none'; });
+    // accessibility: close modal on backdrop click
+    modal.addEventListener('click', (ev)=>{ if(ev.target===modal) hideModal(); });
 
     // end script
   </script>

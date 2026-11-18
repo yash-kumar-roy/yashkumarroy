@@ -3,12 +3,18 @@
 // Starfield
 (() => {
   const canvas = document.getElementById('stars');
-  const ctx = canvas.getContext('2d', { alpha: true });
-  let w, h, stars;
+  const ctx = canvas && canvas.getContext('2d', { alpha: true });
+  if (!ctx) return;
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let w = 0, h = 0, stars, dpr = 1, lastW = 0;
 
   function resize() {
-    w = canvas.width = window.innerWidth * devicePixelRatio;
-    h = canvas.height = window.innerHeight * devicePixelRatio;
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // Ignore small height-only changes (mobile URL bar) so stars don't regenerate while scrolling
+    if (stars && window.innerWidth === lastW && Math.abs(window.innerHeight * dpr - h) < 120 * dpr) return;
+    lastW = window.innerWidth;
+    w = canvas.width = Math.round(window.innerWidth * dpr);
+    h = canvas.height = Math.round(window.innerHeight * dpr);
     // Generate stars proportional to area
     const count = Math.min(450, Math.floor((w*h) / (1400*1400) * 350) + 120);
     stars = Array.from({ length: count }, () => ({
@@ -20,19 +26,21 @@
     }));
   }
 
-  function tick() {
+  function draw(move) {
     ctx.clearRect(0, 0, w, h);
     for (const s of stars) {
       // parallax speed
-      s.x += s.vx * s.z;
-      s.y += s.vy * s.z;
+      if (move) {
+        s.x += s.vx * s.z;
+        s.y += s.vy * s.z;
+      }
 
       if (s.x < -10) s.x = w + 10;
       if (s.x > w + 10) s.x = -10;
       if (s.y < -10) s.y = h + 10;
       if (s.y > h + 10) s.y = -10;
 
-      const size = (1.2 + s.z * 1.8) * devicePixelRatio;
+      const size = (1.2 + s.z * 1.8) * dpr;
       const alpha = 0.35 + s.z * 0.6;
       // purple → cyan hue drift
       const grad = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, size);
@@ -43,12 +51,17 @@
       ctx.arc(s.x, s.y, size, 0, Math.PI * 2);
       ctx.fill();
     }
+  }
+
+  function tick() {
+    draw(true);
     requestAnimationFrame(tick);
   }
 
-  window.addEventListener('resize', resize, { passive: true });
+  window.addEventListener('resize', () => { resize(); if (reduceMotion) draw(false); }, { passive: true });
   resize();
-  tick();
+  if (reduceMotion) draw(false);
+  else requestAnimationFrame(tick);
 })();
 
 // Typewriter for "Yash"
@@ -68,17 +81,32 @@
   setTimeout(type, 220);
 })();
 
-// Spacebar to scramble the grid slightly
+// Spacebar to scramble the grid slightly (or click/tap the Space key in the log)
 (() => {
   let t;
-  window.addEventListener('keydown', (e) => {
-    if (e.code === 'Space') {
+  function scramble() {
+    document.body.classList.add('scramble');
+    clearTimeout(t);
+    t = setTimeout(() => document.body.classList.remove('scramble'), 400);
+  }
+  // Don't hijack Space while the user is typing or activating a control
+  function isInteractive(el) {
+    if (!el || el === document.body || el === document.documentElement) return false;
+    if (el.classList && el.classList.contains('scramble-key')) return false;
+    const tag = el.tagName;
+    return el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'A', 'SUMMARY'].includes(tag);
+  }
+  document.addEventListener('keydown', (e) => {
+    if ((e.code === 'Space' || e.key === ' ') && !e.ctrlKey && !e.metaKey && !e.altKey && !isInteractive(e.target)) {
       e.preventDefault();
-      document.body.classList.add('scramble');
-      clearTimeout(t);
-      t = setTimeout(() => document.body.classList.remove('scramble'), 400);
+      if (!e.repeat) scramble();
     }
-  }, { passive: false });
+  });
+  const key = document.querySelector('.scramble-key');
+  if (key) {
+    key.addEventListener('click', scramble);
+    key.addEventListener('keydown', (e) => { if (e.key === 'Enter') scramble(); });
+  }
 })();
 
 // Simple prompt runner (mock)
@@ -86,6 +114,7 @@
   const form = document.querySelector('.prompt-row');
   const input = document.getElementById('prompt');
   const out = document.getElementById('outputInner');
+  const pending = new Set();
 
   function print(line = '') {
     const div = document.createElement('div');
@@ -100,6 +129,8 @@
     if (!q) return;
 
     if (q === '/clear') {
+      pending.forEach(clearTimeout);
+      pending.clear();
       out.textContent = '';
       input.value = '';
       print('[cleared]');
@@ -116,7 +147,8 @@
       "I would, but the cat is on the keyboard."
     ];
     const answer = replies[Math.floor(Math.random() * replies.length)];
-    setTimeout(() => print(answer), 300 + Math.random() * 500);
+    const id = setTimeout(() => { pending.delete(id); print(answer); }, 300 + Math.random() * 500);
+    pending.add(id);
     input.value = '';
   });
 })();
@@ -125,10 +157,19 @@
 (() => {
   const nav = document.querySelector('.nav');
   const toggle = document.querySelector('.nav-toggle');
-  toggle.addEventListener('click', () => {
-    const open = nav.classList.toggle('open');
+  function setOpen(open) {
+    nav.classList.toggle('open', open);
     toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+  toggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    setOpen(!nav.classList.contains('open'));
   });
+  // Close after choosing a link, clicking outside, or pressing Escape
+  nav.querySelectorAll('.nav-links a').forEach(a => a.addEventListener('click', () => setOpen(false)));
+  document.addEventListener('click', (e) => { if (nav.classList.contains('open') && !nav.contains(e.target)) setOpen(false); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && nav.classList.contains('open')) { setOpen(false); toggle.focus(); } });
+  window.addEventListener('resize', () => { if (window.innerWidth > 860) setOpen(false); }, { passive: true });
 })();
 
 // Footer year

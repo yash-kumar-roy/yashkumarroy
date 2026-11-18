@@ -16,6 +16,8 @@
       --panel: rgba(255,255,255,0.10);
     }
 
+    *, *::before, *::after { box-sizing: border-box; }
+
     html, body {
       margin: 0;
       height: 100%;
@@ -29,15 +31,17 @@
       position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; cursor: none;
     }
 
-    .hud { position: fixed; inset: 0; pointer-events: none; display: grid; grid-template-rows: auto 1fr auto; }
-    .topbar { display: flex; gap: 16px; align-items: center; justify-content: space-between; padding: 14px 18px; background: linear-gradient(to bottom, rgba(0,0,0,0.35), rgba(0,0,0,0)); backdrop-filter: blur(6px); }
+    .hud { position: fixed; inset: 0; pointer-events: none; display: grid; grid-template-rows: auto 1fr auto; grid-template-columns: minmax(0, 1fr); }
+    .topbar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; padding: 14px 18px; background: linear-gradient(to bottom, rgba(0,0,0,0.35), rgba(0,0,0,0)); backdrop-filter: blur(6px); }
     .stat { display: inline-flex; align-items: center; gap: 10px; background: var(--glass); border: 1px solid rgba(255,255,255,0.14); border-radius: 999px; padding: 8px 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.25) inset; font-weight: 600; }
-    .hpbar { --w: 220px; width: var(--w); height: 10px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; border: 1px solid rgba(255,255,255,0.14); }
+    .hpbar { box-sizing: content-box; --w: 220px; width: var(--w); height: 10px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; border: 1px solid rgba(255,255,255,0.14); }
     .hpbar > i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, var(--ok), #22c55e); transition: width 120ms linear; }
 
-    .controls { display: flex; align-items: center; gap: 10px; }
-    .btn { pointer-events: auto; user-select: none; border: 1px solid rgba(255,255,255,0.14); background: var(--panel); padding: 8px 14px; border-radius: 12px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; font-size: 12px; transition: transform 120ms ease, background 120ms ease, filter 120ms ease; }
+    .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; min-width: 0; }
+    .btn { pointer-events: auto; user-select: none; cursor: pointer; color: var(--fg); font-family: inherit; border: 1px solid rgba(255,255,255,0.14); background: var(--panel); padding: 8px 14px; border-radius: 12px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; font-size: 12px; transition: transform 120ms ease, background 120ms ease, filter 120ms ease; }
     .btn:hover { filter: brightness(1.2); transform: translateY(-1px); }
+    .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .btn-primary { background: linear-gradient(90deg, rgba(125,211,252,.35), rgba(167,139,250,.35)); border-color: rgba(125,211,252,.55); }
 
     .center { display: grid; place-items: center; }
     .panel { pointer-events: auto; background: rgba(2,6,23,0.66); border: 1px solid rgba(148,163,184,.25); border-radius: 18px; padding: 28px 24px; width: min(700px, 92vw); box-shadow: 0 10px 50px rgba(0,0,0,.45); text-align: center; }
@@ -48,8 +52,23 @@
     .bottom { display: grid; place-items: center; padding: 16px; }
     .toast { pointer-events: none; opacity: .85; font-weight: 700; letter-spacing: .3px; }
 
-    .watermark { position: fixed; right: 10px; bottom: 8px; opacity: .45; font-size: 12px; }
+    .watermark { position: fixed; right: 10px; bottom: 8px; opacity: .45; font-size: 12px; pointer-events: none; }
     .hidden { display: none !important; }
+    .touch-hint { opacity: .7; font-size: 13px; margin-top: 10px; }
+    /* Off-screen input: receives typing on touch devices (opens the on-screen keyboard) */
+    #kbInput { position: fixed; left: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; border: 0; padding: 0; font-size: 16px; pointer-events: none; }
+
+    @media (max-width: 600px) {
+      .topbar { padding: 10px 10px; justify-content: center; gap: 8px; }
+      .controls { gap: 6px; justify-content: center; }
+      .stat { padding: 6px 10px; gap: 6px; font-size: 13px; }
+      .hpbar { --w: 120px; }
+      .btn { padding: 7px 10px; font-size: 11px; }
+      .panel { padding: 22px 16px; }
+      .subtitle { margin-bottom: 16px; font-size: 14px; }
+      .kbd { font-size: .85rem; }
+      .watermark { display: none; }
+    }
   </style>
 </head>
 <body>
@@ -79,8 +98,9 @@
           &nbsp;•&nbsp;<span class="kbd">Enter</span> pause
         </p>
         <div style="margin-top:16px">
-          <button id="btnStart" class="btn" style="font-size:14px;padding:10px 18px">Start Game</button>
+          <button id="btnStart" class="btn btn-primary" style="font-size:14px;padding:10px 18px">Start Game</button>
         </div>
+        <p class="touch-hint">On a phone or tablet, tap the screen to bring up the keyboard.</p>
       </div>
     </div>
 
@@ -88,6 +108,7 @@
   </div>
 
   <div class="watermark">Typing Game — single‑file demo</div>
+  <input id="kbInput" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="Type here" />
 
   <script>
   // ======= Utility =======
@@ -123,6 +144,7 @@
     charsTyped: 0,
     startTime: 0,
     lastSpawn: 0,
+    waveStart: 0,
   };
 
   const ui = {
@@ -135,6 +157,7 @@
     btnStart: document.getElementById('btnStart'),
     btnPause: document.getElementById('btnPause'),
     btnRestart: document.getElementById('btnRestart'),
+    kbInput: document.getElementById('kbInput'),
   };
 
   // ======= Dictionary =======
@@ -147,7 +170,10 @@
     const word = choice(DICT);
     const id = ENEMY_ID++;
     const speed = rand(28, 50) + state.wave * 3; // px/s
-    const x = rand(40, innerWidth - 40);
+    // keep the whole word box on screen (narrow screens / iframes)
+    ctx.font = '700 22px ui-monospace, Menlo, Consolas, monospace';
+    const half = (ctx.measureText(word).width + 22) / 2 + 6;
+    const x = innerWidth > half * 2 ? rand(half, innerWidth - half) : innerWidth / 2;
     const y = -20;
     state.enemies.push({ id, word, progress: 0, x, y, speed, hp: word.length, created: now, targeted: false });
     state.lastSpawn = now;
@@ -174,20 +200,49 @@
 
   // ======= Input =======
   addEventListener('keydown', (e) => {
-    if (!state.running) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!state.running) {
+      if (e.key === 'Enter' && !ui.startPanel.classList.contains('hidden')) { e.preventDefault(); start(); }
+      return;
+    }
 
-    if (e.key === 'Enter') { togglePause(); return; }
-    if (state.paused) return;
+    if (e.key === 'Enter') { e.preventDefault(); togglePause(); return; }
+    if (e.key === ' ' || /^[a-z]$/i.test(e.key)) {
+      e.preventDefault(); // handled here (also stops the hidden input / focused buttons from reacting)
+      handleChar(e.key);
+    }
+  });
 
-    if (e.key === ' ') { // Space to retarget
-      e.preventDefault();
+  // Touch keyboards often send keyCode 229 / "Unidentified" keydowns; read the text from the hidden input instead
+  ui.kbInput.addEventListener('input', () => {
+    const text = ui.kbInput.value;
+    ui.kbInput.value = '';
+    for (const ch of text) handleChar(ch);
+  });
+
+  function focusTyping() {
+    try { ui.kbInput.focus({ preventScroll: true }); } catch (_) { ui.kbInput.focus(); }
+  }
+  // tapping/clicking the game area (re)focuses typing — needed inside an iframe and on touch devices
+  addEventListener('pointerdown', (e) => {
+    if (state.running && !e.target.closest('button')) focusTyping();
+  });
+
+  function handleChar(ch) {
+    if (!state.running || state.paused) return;
+
+    if (ch === ' ') { // Space to retarget
       state.typed = '';
+      if (state.targetId !== null) {
+        const t = state.enemies.find(en => en.id === state.targetId);
+        if (t) { t.progress = 0; t.targeted = false; }
+      }
       state.targetId = null;
       setToast('Retarget');
       return;
     }
 
-    const key = e.key.toLowerCase();
+    const key = ch.toLowerCase();
     if (!/^[a-z]$/.test(key)) return;
 
     state.charsTyped++;
@@ -223,7 +278,7 @@
       damage(2);
       setToast('✗ Wrong letter');
     }
-  });
+  }
 
   // ======= Damage / HP =======
   function damage(amount) {
@@ -243,18 +298,27 @@
   }
 
   // ======= Buttons =======
-  ui.btnStart.onclick = start;
-  ui.btnRestart.onclick = restart;
-  ui.btnPause.onclick = togglePause;
+  // blur buttons after a click so Space/Enter keep going to the game instead of re-clicking them
+  ui.btnStart.onclick = (e) => { e.currentTarget.blur(); start(); };
+  ui.btnRestart.onclick = (e) => { e.currentTarget.blur(); restart(); };
+  ui.btnPause.onclick = (e) => { e.currentTarget.blur(); togglePause(); if (state.running) focusTyping(); };
 
+  let rafId = 0;
   function start() {
+    const now = performance.now();
     Object.assign(state, {
       running: true, paused: false, score: 0, wave: 1, hp: 100,
       enemies: [], bullets: [], particles: [], targetId: null, typed: '',
-      wordsTyped: 0, charsTyped: 0, startTime: performance.now(), lastSpawn: 0
+      wordsTyped: 0, charsTyped: 0, startTime: now, lastSpawn: 0, waveStart: now
     });
     ui.startPanel.classList.add('hidden');
     ui.hpFill.style.width = '100%';
+    ui.btnPause.textContent = 'Pause';
+    ui.score.textContent = '0';
+    ui.wave.textContent = '1';
+    ui.wpm.textContent = '0';
+    setToast('Go!');
+    focusTyping();
     loopReset();
   }
 
@@ -266,6 +330,17 @@
   function togglePause() {
     if (!state.running) return;
     state.paused = !state.paused;
+    const now = performance.now();
+    if (state.paused) {
+      state.pausedAt = now;
+    } else if (state.pausedAt) {
+      // don't count paused time towards WPM / spawn / wave timers
+      const pausedFor = now - state.pausedAt;
+      state.startTime += pausedFor;
+      state.lastSpawn += pausedFor;
+      state.waveStart += pausedFor;
+      state.pausedAt = 0;
+    }
     ui.btnPause.textContent = state.paused ? 'Resume' : 'Pause';
     setToast(state.paused ? 'Paused' : 'Resumed');
   }
@@ -273,34 +348,42 @@
   function gameOver() {
     state.running = false;
     state.paused = false;
+    ui.btnPause.textContent = 'Pause';
+    ui.score.textContent = state.score;
+    ui.kbInput.blur();
     ui.startPanel.classList.remove('hidden');
+    ui.startPanel.querySelector('.title').textContent = 'Game Over';
     ui.startPanel.querySelector('.subtitle').innerHTML =
-      `Game over. Score <b>${state.score}</b>, Wave <b>${state.wave}</b>, WPM <b>${ui.wpm.textContent}</b>.`;
+      `Score <b>${state.score}</b>, Wave <b>${state.wave}</b>, WPM <b>${ui.wpm.textContent}</b>.`;
+    ui.btnStart.textContent = 'Play Again';
+    setToast('Game over');
   }
 
   // ======= Spawn & Loop =======
   function spawnLogic(now) {
     const baseDelay = clamp(1600 - state.wave * 80, 700, 1600);
     if (now - state.lastSpawn > baseDelay) spawnEnemy(now);
-    if (state.enemies.length === 0 && now - state.startTime > 8000) {
+    // screen cleared after at least 8s in this wave -> next wave (only once per wave)
+    if (state.enemies.length === 0 && now - state.waveStart > 8000) {
       state.wave++;
+      state.waveStart = now;
       ui.wave.textContent = state.wave;
       setToast(`Wave ${state.wave}`);
     }
   }
 
   let last = 0;
-  function loopReset() { last = performance.now(); requestAnimationFrame(loop); }
+  function loopReset() { cancelAnimationFrame(rafId); last = performance.now(); rafId = requestAnimationFrame(loop); }
 
   function loop(now) {
     if (!state.running) return;
-    const dt = Math.min(0.033, (now - last) / 1000);
+    const dt = Math.max(0, Math.min(0.033, (now - last) / 1000));
     last = now;
     if (!state.paused) {
       update(now, dt);
       draw(now, dt);
     }
-    requestAnimationFrame(loop);
+    if (state.running) rafId = requestAnimationFrame(loop);
   }
 
   function update(now, dt) {
@@ -446,6 +529,9 @@
 
   // Startup hint
   setToast('Press Start');
+  // draw one static frame so the idle screen (and the portfolio thumbnail) shows the starfield + ship
+  draw(performance.now(), 0);
+  addEventListener('resize', () => { if (!state.running || state.paused) draw(performance.now(), 0); });
   </script>
 </body>
 </html>

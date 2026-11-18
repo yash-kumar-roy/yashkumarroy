@@ -115,6 +115,7 @@
   }
   .node{
     cursor:grab;
+    touch-action:none;
     filter: drop-shadow(0 8px 18px rgba(0,0,0,.35));
   }
   .node rect{
@@ -150,6 +151,36 @@
   }
   .kbd{padding:.2em .5em; border-radius:6px; background:#1b2050; border:1px solid #2f3888; font-size:12px; color:#c8d0ff}
   .credits{font-size:12px; opacity:.8}
+  .node.dragging{cursor:grabbing}
+  .list-item.active{background:#161d45}
+  .ellipsis{display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .row > .heart{flex:0 0 auto; align-self:center}
+  .row > *{min-width:0}
+  .zoom-group{display:inline-flex; gap:4px}
+  .zoom-group button{padding:8px 10px; min-width:38px}
+  button:focus-visible, select:focus-visible, input:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+  input[type="text"]::placeholder{color:#7f89b8}
+
+  /* Phones / narrow iframes: stack header, canvas, then the controls */
+  @media (max-width: 760px){
+    html,body{height:auto}
+    body{
+      grid-template-columns: 1fr;
+      grid-template-rows: auto 60vh auto;
+      grid-template-areas:
+        "header"
+        "canvas"
+        "sidebar";
+      min-height:100vh;
+    }
+    header{position:static; flex-wrap:wrap; padding:10px 12px; gap:8px}
+    header .mini{display:none}
+    header .actions{margin-left:0; width:100%}
+    header .actions > button{flex:1 1 auto}
+    .canvas-wrap{min-height:320px; border-bottom:1px solid #20264a}
+    .sidebar{border-right:none; padding:10px 12px 24px; overflow:visible}
+    .foot{display:none}
+  }
   .pill{
     display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; background:#141a39; border:1px solid #2a347c; color:#c9d1ff;
   }
@@ -160,6 +191,11 @@
     <span class="pill">🌳 Family Tree Builder</span>
     <span class="mini">Drag nodes • Zoom with Ctrl + Wheel</span>
     <div class="actions">
+      <span class="zoom-group" role="group" aria-label="Zoom">
+        <button id="zoomOutBtn" class="secondary" title="Zoom out" aria-label="Zoom out">−</button>
+        <button id="zoomResetBtn" class="secondary" title="Reset zoom">100%</button>
+        <button id="zoomInBtn" class="secondary" title="Zoom in" aria-label="Zoom in">+</button>
+      </span>
       <button id="autoLayoutBtn" title="Auto layout the tree">Auto‑layout</button>
       <button id="downloadBtn" title="Download PNG of the current tree">Download PNG</button>
     </div>
@@ -168,7 +204,7 @@
   <aside class="sidebar">
     <div class="card">
       <div class="row">
-        <input id="newName" type="text" placeholder="Person name" />
+        <input id="newName" type="text" placeholder="Person name" aria-label="New person name" maxlength="60" />
         <select id="newGender" title="Gender">
           <option value="u">—</option>
           <option value="f">Female</option>
@@ -180,15 +216,15 @@
         <button id="addRootBtn">Add as Root</button>
         <button id="addChildBtn" class="secondary" title="Adds child to the selected person">Add Child</button>
       </div>
-      <div class="hint">Tip: Click a node to select it. “Add Child” adds a new branch under the selected person. ❗</div>
+      <div class="hint">Tip: Click a node to select it. “Add Child” adds a new branch under the selected person. Shortcuts (outside text boxes): <span class="kbd">A</span> add child, <span class="kbd">R</span> auto‑layout, <span class="kbd">Del</span> remove branch.</div>
     </div>
 
     <div class="card">
       <h2>Relationships</h2>
       <div class="row">
-        <select id="spouseA"></select>
-        <span style="align-self:center">❤️</span>
-        <select id="spouseB"></select>
+        <select id="spouseA" aria-label="First person"></select>
+        <span class="heart" aria-hidden="true">❤️</span>
+        <select id="spouseB" aria-label="Second person"></select>
       </div>
       <div class="row">
         <button id="addSpouseBtn">Add Spouse Link</button>
@@ -201,8 +237,16 @@
       <h2>Selection</h2>
       <div id="selectedView" class="hint">No person selected.</div>
       <div class="row">
-        <input id="renameInput" type="text" placeholder="Rename selected…" />
+        <input id="renameInput" type="text" placeholder="Rename selected…" aria-label="Rename selected person" maxlength="60" />
         <button id="renameBtn" class="secondary">Rename</button>
+      </div>
+      <div class="row">
+        <select id="genderSelect" title="Gender of selected person" aria-label="Gender of selected person">
+          <option value="u">—</option>
+          <option value="f">Female</option>
+          <option value="m">Male</option>
+          <option value="n">Non‑binary</option>
+        </select>
       </div>
       <div class="row">
         <button id="removeBranchBtn" class="danger" title="Remove selected person and all their descendants">Remove Branch</button>
@@ -218,10 +262,10 @@
 
   <div class="canvas-wrap">
     <div id="viewport">
-      <svg id="svg" width="1800" height="1200" xmlns="http://www.w3.org/2000/svg">
+      <svg id="svg" width="1800" height="1200" viewBox="0 0 1800 1200" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <marker id="arrowHead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-            <polygon points="0 0, 10 3.5, 0 7" fill="var(--edge)"/>
+            <polygon points="0 0, 10 3.5, 0 7" fill="#7b86b8"/>
           </marker>
         </defs>
         <!-- Edges -->
@@ -253,19 +297,19 @@
     spouses: new Set(), // keys: "minId|maxId"
     selectedId: null,
     zoom: 1,
-    panX: 40,
-    panY: 40,
   };
 
   const svg = document.getElementById('svg');
   const edgesLayer = document.getElementById('edges');
   const nodesLayer = document.getElementById('nodes');
   const viewport = document.getElementById('viewport');
+  const zoomLabel = document.getElementById('zoomResetBtn');
 
   // ======== Utils ========
   const uid = () => 'n' + Math.random().toString(36).slice(2, 9);
   const spouseKey = (a,b)=> a<b ? (a+'|'+b) : (b+'|'+a);
   const clamp = (v,min,max)=> Math.max(min, Math.min(max,v));
+  const escapeHTML = (s)=> String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const getChildrenOf = (id)=>{
     const out=[];
     for(const nid of state.order){
@@ -277,6 +321,14 @@
   const getParentsOf = (id)=>{
     const n = state.nodes[id]; if(!n) return [];
     return [...n.parents].map(pid=>state.nodes[pid]).filter(Boolean);
+  };
+  const getSpousesOf = (id)=>{
+    const out = [];
+    for(const k of state.spouses){
+      const [a,b] = k.split('|');
+      if(a===id) out.push(b); else if(b===id) out.push(a);
+    }
+    return out;
   };
   const rootCandidates = ()=>{
     // people who have 0 parents
@@ -291,84 +343,101 @@
   };
 
   // ======== Rendering ========
-  const NODE_W = 140, NODE_H = 56, GAP_X = 36, GAP_Y = 110;
+  const NODE_W = 140, NODE_H = 56, GAP_X = 36, GAP_Y = 110, MARGIN = 40;
 
-  function sizeSVGToContent(pad=200){
-    // compute bounds
+  function contentBounds(pad=120){
     const xs = state.order.map(id=>state.nodes[id].x);
     const ys = state.order.map(id=>state.nodes[id].y);
-    const minX = Math.min(...xs, 0), minY = Math.min(...ys, 0);
-    const maxX = Math.max(...xs.map(x => x+NODE_W), 800);
-    const maxY = Math.max(...ys.map(y => y+NODE_H), 600);
-    const w = maxX - minX + pad;
-    const h = maxY - minY + pad;
-    svg.setAttribute('width', Math.ceil(w));
-    svg.setAttribute('height', Math.ceil(h));
+    const maxX = Math.max(...xs.map(x => x+NODE_W), 0);
+    const maxY = Math.max(...ys.map(y => y+NODE_H), 0);
+    return { w: Math.ceil(maxX + pad), h: Math.ceil(maxY + pad) };
   }
 
-  function render(){
-    // Clear layers
-    edgesLayer.innerHTML = '';
-    nodesLayer.innerHTML = '';
+  function sizeSVGToContent(pad=120){
+    const b = contentBounds(pad);
+    // always at least fill the visible viewport so empty space is clickable
+    const w = Math.max(b.w, Math.ceil(viewport.clientWidth / state.zoom));
+    const h = Math.max(b.h, Math.ceil(viewport.clientHeight / state.zoom));
+    svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    svg.setAttribute('width', Math.ceil(w * state.zoom));
+    svg.setAttribute('height', Math.ceil(h * state.zoom));
+  }
 
-    // Draw parent-child edges
+  function edgePathParent(parent, child){
+    // From bottom center of parent to top center of child
+    const x1 = parent.x + NODE_W/2, y1 = parent.y + NODE_H;
+    const x2 = child.x + NODE_W/2, y2 = child.y;
+    const mx = x1 + (x2-x1)/2;
+    return `M ${x1} ${y1} C ${mx} ${y1+30}, ${mx} ${y2-30}, ${x2} ${y2}`;
+  }
+
+  function edgePathSpouse(A, B){
+    // connect the sides that face each other
+    const [L, R] = (A.x + NODE_W/2) <= (B.x + NODE_W/2) ? [A, B] : [B, A];
+    const ax = L.x + NODE_W, ay = L.y + NODE_H/2;
+    const bx = R.x, by = R.y + NODE_H/2;
+    const mx = (ax+bx)/2;
+    return `M ${ax} ${ay} C ${mx} ${ay}, ${mx} ${by}, ${bx} ${by}`;
+  }
+
+  function renderEdges(){
+    edgesLayer.innerHTML = '';
     for(const id of state.order){
       const child = state.nodes[id];
       for(const pid of child.parents){
         const parent = state.nodes[pid];
         if(!parent) continue;
-        const {x:px, y:py} = parent;
-        const {x:cx, y:cy} = child;
-        // From bottom center of parent to top center of child
-        const x1 = px + NODE_W/2, y1 = py + NODE_H;
-        const x2 = cx + NODE_W/2, y2 = cy;
-        const mx = x1 + (x2-x1)/2;
-        const d = `M ${x1} ${y1} C ${mx} ${y1+30}, ${mx} ${y2-30}, ${x2} ${y2}`;
-        const line = el('path', {class:'edge parent', d});
-        edgesLayer.appendChild(line);
+        edgesLayer.appendChild(el('path', {class:'edge parent', d: edgePathParent(parent, child)}));
       }
     }
-    // Draw spouse links
     for(const key of state.spouses){
       const [a,b] = key.split('|');
       const A = state.nodes[a], B = state.nodes[b];
       if(!A || !B) continue;
-      const ax = A.x + NODE_W, ay = A.y + NODE_H/2;
-      const bx = B.x, by = B.y + NODE_H/2;
-      const ymid = (ay+by)/2;
-      const d = `M ${ax} ${ay} C ${(ax+bx)/2} ${ay}, ${(ax+bx)/2} ${by}, ${bx} ${by}`;
-      const line = el('path', {class:'edge spouse', d});
-      edgesLayer.appendChild(line);
+      edgesLayer.appendChild(el('path', {class:'edge spouse', d: edgePathSpouse(A, B)}));
     }
+  }
+
+  function truncate(text, max){
+    return text.length > max ? text.slice(0, max - 1) + '…' : text;
+  }
+
+  function render(){
+    nodesLayer.innerHTML = '';
+    renderEdges();
 
     // Draw nodes
     for(const id of state.order){
       const n = state.nodes[id];
       const g = el('g', {class:'node'+(state.selectedId===id?' selected':''), 'data-id':id, transform:`translate(${n.x} ${n.y})`});
       const rect = el('rect', {rx:10, ry:10, width: NODE_W, height: NODE_H});
-      const name = el('text', {class:'name', x:12, y:22}, escapeText(n.name));
-      const meta = el('text', {class:'meta', x:12, y:40}, genderLabel(n.gender) + personMeta(id));
-      g.append(rect, name, meta);
-
+      const title = el('title', {}, personSummary(id));
+      const name = el('text', {class:'name', x:12, y:22}, truncate(n.name, 15));
+      const meta = el('text', {class:'meta', x:12, y:40}, personMeta(id));
+      g.append(title, rect, name, meta);
       addDragBehavior(g, id);
-
-      g.addEventListener('click', (e)=>{
-        e.stopPropagation();
-        select(id);
-      });
-
       nodesLayer.appendChild(g);
     }
 
     refreshUILists();
+    renderSelectionPanel();
     sizeSVGToContent();
   }
 
   function personMeta(id){
+    // compact so it fits inside the node box; full details are in the tooltip
     const kids = getChildrenOf(id).length;
     const parents = getParentsOf(id).length;
-    const spouses = [...state.spouses].filter(k=>k.includes(id)).length;
-    return ` • ${kids} child${kids!==1?'ren':''} • ${parents} parent${parents!==1?'s':''} • ${spouses} spouse${spouses!==1?'s':''}`;
+    const spouses = getSpousesOf(id).length;
+    const short = {m:'M', f:'F', n:'NB', u:'—'}[state.nodes[id].gender] || '—';
+    return `${short} · ${kids} ${kids===1?'child':'kids'} · ${parents} par · ${spouses} sp`;
+  }
+
+  function personSummary(id){
+    const kids = getChildrenOf(id).length;
+    const parents = getParentsOf(id).length;
+    const spouses = getSpousesOf(id).length;
+    return `${state.nodes[id].name} — ${genderLabel(state.nodes[id].gender)}, ${kids} child${kids!==1?'ren':''}, ${parents} parent${parents!==1?'s':''}, ${spouses} spouse${spouses!==1?'s':''}`;
   }
 
   function genderLabel(g){
@@ -381,129 +450,186 @@
     if(text!=null){ e.textContent = text; }
     return e;
   }
-  const escapeText = (s)=> s;
 
   // ======== Interaction ========
   function select(id){
     state.selectedId = id;
-    renderSelectionPanel();
-    render(); // updates highlight borders + meta counts
+    render(); // updates highlight borders + selection panel
   }
 
+  let lastPanelId = undefined;
   function renderSelectionPanel(){
     const pane = document.getElementById('selectedView');
-    if(!state.selectedId){
+    const renameInput = document.getElementById('renameInput');
+    if(!state.selectedId || !state.nodes[state.selectedId]){
       pane.innerHTML = 'No person selected.';
+      document.getElementById('genderSelect').value = 'u';
+      if(lastPanelId !== null) renameInput.value = '';
+      lastPanelId = null;
       return;
     }
     const n = state.nodes[state.selectedId];
-    const parents = getParentsOf(n.id).map(p=>p.name).join(', ') || '—';
-    const kids = getChildrenOf(n.id).map(c=>c.name).join(', ') || '—';
+    const parents = getParentsOf(n.id).map(p=>escapeHTML(p.name)).join(', ') || '—';
+    const kids = getChildrenOf(n.id).map(c=>escapeHTML(c.name)).join(', ') || '—';
+    const spouses = getSpousesOf(n.id).map(s=>escapeHTML(state.nodes[s].name)).join(', ') || '—';
     pane.innerHTML = `
-      <div><span class="tag">Selected</span> <strong>${n.name}</strong></div>
+      <div><span class="tag">Selected</span> <strong>${escapeHTML(n.name)}</strong></div>
       <div class="hint">Gender: ${genderLabel(n.gender)}</div>
       <div class="hint">Parents: ${parents}</div>
       <div class="hint">Children: ${kids}</div>
+      <div class="hint">Spouses: ${spouses}</div>
     `;
-    document.getElementById('renameInput').value = n.name;
+    document.getElementById('genderSelect').value = n.gender;
+    // only reset the rename box when the selection changes (don't clobber typing)
+    if(lastPanelId !== n.id){ renameInput.value = n.name; }
+    lastPanelId = n.id;
   }
 
   function refreshUILists(){
     // People list
     const list = document.getElementById('peopleList');
     list.innerHTML = '';
+    if(state.order.length === 0){
+      const empty = document.createElement('div');
+      empty.className = 'list-item hint';
+      empty.textContent = 'No people yet — add a root person above.';
+      list.appendChild(empty);
+    }
     for(const id of state.order){
       const p = state.nodes[id];
       const item = document.createElement('div');
-      item.className = 'list-item';
+      item.className = 'list-item' + (state.selectedId === id ? ' active' : '');
       const btn = document.createElement('button');
       btn.textContent = 'Select';
       btn.className = 'secondary';
-      btn.onclick = ()=>select(id);
+      btn.onclick = ()=>{ select(id); centerOn(id); };
       const span = document.createElement('div');
       span.style.flex='1';
-      span.innerHTML = `<strong>${p.name}</strong><div class="hint">id: ${id}</div>`;
+      span.style.minWidth='0';
+      span.innerHTML = `<strong class="ellipsis">${escapeHTML(p.name)}</strong><div class="hint">id: ${id}</div>`;
       const tag = document.createElement('span');
       tag.className='tag'; tag.textContent = genderLabel(p.gender);
       item.append(btn, span, tag);
       list.appendChild(item);
     }
-    // Relationship dropdowns
-    const fillSelect = (sel)=>{
+    // Relationship dropdowns (keep the user's current choices)
+    const fillSelect = (sel, fallbackIndex)=>{
+      const prev = sel.value;
       sel.innerHTML = '';
       for(const id of state.order){
         const opt = document.createElement('option');
         opt.value=id; opt.textContent = state.nodes[id].name;
         sel.appendChild(opt);
       }
+      if(prev && state.nodes[prev]) sel.value = prev;
+      else if(state.order[fallbackIndex]) sel.value = state.order[fallbackIndex];
     };
-    fillSelect(document.getElementById('spouseA'));
-    fillSelect(document.getElementById('spouseB'));
+    fillSelect(document.getElementById('spouseA'), 0);
+    fillSelect(document.getElementById('spouseB'), 1);
   }
 
-  // Dragging nodes
+  // Dragging nodes (pointer events: mouse, pen and touch)
   function addDragBehavior(g, id){
-    let dragging=false, sx=0, sy=0, startX=0, startY=0;
-    const onDown = (e)=>{
-      dragging = true; g.style.cursor='grabbing';
-      const pt = getMouse(e);
-      sx = pt.x; sy = pt.y;
-      startX = state.nodes[id].x; startY = state.nodes[id].y;
-      window.addEventListener('mousemove', onMove);
-      window.addEventListener('mouseup', onUp, {once:true});
+    let start = null;
+    g.addEventListener('pointerdown', (e)=>{
+      if(e.button !== 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const pt = getSVGPoint(e);
+      start = { px: pt.x, py: pt.y, x: state.nodes[id].x, y: state.nodes[id].y, moved: false, pointerId: e.pointerId };
+      try{ g.setPointerCapture(e.pointerId); }catch(err){ /* ignore */ }
+      g.classList.add('dragging');
+    });
+    g.addEventListener('pointermove', (e)=>{
+      if(!start || e.pointerId !== start.pointerId) return;
+      const pt = getSVGPoint(e);
+      const dx = pt.x - start.px, dy = pt.y - start.py;
+      if(!start.moved && Math.hypot(dx, dy) * state.zoom < 4) return;
+      start.moved = true;
+      const n = state.nodes[id];
+      n.x = Math.max(0, start.x + dx);
+      n.y = Math.max(0, start.y + dy);
+      g.setAttribute('transform', `translate(${n.x} ${n.y})`);
+      renderEdges();
+    });
+    const end = (e)=>{
+      if(!start || e.pointerId !== start.pointerId) return;
+      const moved = start.moved;
+      start = null;
+      g.classList.remove('dragging');
+      if(moved) sizeSVGToContent();
+      else if(e.type === 'pointerup') select(id);
     };
-    const onMove = (e)=>{
-      if(!dragging) return;
-      const pt = getMouse(e);
-      const dx = (pt.x - sx), dy = (pt.y - sy);
-      state.nodes[id].x = startX + dx;
-      state.nodes[id].y = startY + dy;
-      render();
-    };
-    const onUp = ()=>{
-      dragging=false; g.style.cursor='grab';
-      window.removeEventListener('mousemove', onMove);
-    };
-    g.addEventListener('mousedown', onDown);
+    g.addEventListener('pointerup', end);
+    g.addEventListener('pointercancel', end);
   }
 
-  function getMouse(e){
-    // Convert page coords to SVG coords
+  function getSVGPoint(e){
+    // Convert client coords to (unzoomed) SVG content coords
     const rect = svg.getBoundingClientRect();
-    const x = (e.clientX - rect.left);
-    const y = (e.clientY - rect.top);
-    return {x,y};
+    return { x: (e.clientX - rect.left) / state.zoom, y: (e.clientY - rect.top) / state.zoom };
   }
 
-  // Click to clear selection
+  // Click on empty canvas to clear selection
   viewport.addEventListener('click', (e)=>{
-    if(e.target === viewport){ state.selectedId=null; renderSelectionPanel(); render(); }
+    if(e.target === viewport || e.target === svg){
+      if(state.selectedId){ state.selectedId=null; render(); }
+    }
   });
+
+  // ======== Zoom ========
+  function setZoom(z, clientX, clientY){
+    const newZoom = clamp(z, 0.3, 2.2);
+    if(Math.abs(newZoom - state.zoom) < 1e-6) return;
+    const vr = viewport.getBoundingClientRect();
+    const ax = clientX == null ? vr.width/2 : clientX - vr.left;
+    const ay = clientY == null ? vr.height/2 : clientY - vr.top;
+    // content point under the anchor
+    const cx = (viewport.scrollLeft + ax) / state.zoom;
+    const cy = (viewport.scrollTop + ay) / state.zoom;
+    state.zoom = newZoom;
+    sizeSVGToContent();
+    viewport.scrollLeft = cx * state.zoom - ax;
+    viewport.scrollTop = cy * state.zoom - ay;
+    zoomLabel.textContent = Math.round(state.zoom * 100) + '%';
+  }
 
   // Zoom (Ctrl + Wheel)
   viewport.addEventListener('wheel', (e)=>{
-    if(!e.ctrlKey) return;
+    if(!e.ctrlKey && !e.metaKey) return;
     e.preventDefault();
-    const delta = Math.sign(e.deltaY);
-    const factor = delta>0 ? 0.9 : 1.1;
-    state.zoom = clamp(state.zoom*factor, 0.3, 2.2);
-    svg.style.transformOrigin = '0 0';
-    svg.style.transform = `translate(${state.panX}px, ${state.panY}px) scale(${state.zoom})`;
+    const factor = e.deltaY > 0 ? 0.9 : 1.1;
+    setZoom(state.zoom * factor, e.clientX, e.clientY);
   }, {passive:false});
+
+  document.getElementById('zoomInBtn').addEventListener('click', ()=> setZoom(state.zoom * 1.2));
+  document.getElementById('zoomOutBtn').addEventListener('click', ()=> setZoom(state.zoom / 1.2));
+  document.getElementById('zoomResetBtn').addEventListener('click', ()=> setZoom(1));
+
+  window.addEventListener('resize', ()=> sizeSVGToContent());
 
   // ======== Commands ========
   const newNameEl = document.getElementById('newName');
   const newGenderEl = document.getElementById('newGender');
 
-  document.getElementById('addRootBtn').addEventListener('click', ()=>{
+  function freeRootSpot(){
+    if(state.order.length === 0) return {x: MARGIN, y: MARGIN};
+    const maxX = Math.max(...state.order.map(id => state.nodes[id].x));
+    return {x: maxX + NODE_W + GAP_X, y: MARGIN};
+  }
+
+  function addRoot(){
     const name = ensureUniqueName(newNameEl.value || 'Root');
     const gender = newGenderEl.value;
-    const id = addPerson(name, gender, 40 + state.order.length*30, 40);
+    const spot = freeRootSpot();
+    const id = addPerson(name, gender, spot.x, spot.y);
     state.selectedId = id;
+    newNameEl.value = '';
     render();
-  });
+    centerOn(id);
+  }
 
-  document.getElementById('addChildBtn').addEventListener('click', ()=>{
+  function addChild(){
     if(!state.selectedId){ alert('Select a person first to add a child.'); return; }
     const parent = state.nodes[state.selectedId];
     const name = ensureUniqueName(newNameEl.value || `${parent.name}'s child`);
@@ -512,45 +638,57 @@
     // set parent-child
     state.nodes[id].parents.add(parent.id);
     // Try to also include the parent's spouse (if only one) as co-parent
-    const spouse = firstSpouseOf(parent.id);
-    if(spouse) state.nodes[id].parents.add(spouse);
+    const spouses = getSpousesOf(parent.id);
+    if(spouses.length === 1) state.nodes[id].parents.add(spouses[0]);
     state.selectedId = id;
+    newNameEl.value = '';
     autoLayout(); // keep tree tidy when adding kids
     render();
+    centerOn(id);
+  }
+
+  document.getElementById('addRootBtn').addEventListener('click', addRoot);
+  document.getElementById('addChildBtn').addEventListener('click', addChild);
+  newNameEl.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){ e.preventDefault(); state.selectedId ? addChild() : addRoot(); }
   });
 
-  document.getElementById('renameBtn').addEventListener('click', ()=>{
-    if(!state.selectedId) return;
+  function renameSelected(){
+    if(!state.selectedId){ alert('Select a person to rename.'); return; }
     const val = document.getElementById('renameInput').value.trim();
     if(!val) return;
     state.nodes[state.selectedId].name = val;
     render();
+  }
+  document.getElementById('renameBtn').addEventListener('click', renameSelected);
+  document.getElementById('renameInput').addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){ e.preventDefault(); renameSelected(); }
   });
 
-  document.getElementById('removeBranchBtn').addEventListener('click', ()=>{
-    const id = state.selectedId;
-    if(!id){ alert('Select a person to remove.'); return; }
-    if(!confirm('Remove this person and ALL of their descendants?')) return;
-    removeBranch(id);
-    state.selectedId = null;
+  document.getElementById('genderSelect').addEventListener('change', (e)=>{
+    if(!state.selectedId) return;
+    state.nodes[state.selectedId].gender = e.target.value;
     render();
   });
 
-  function firstSpouseOf(id){
-    for(const k of state.spouses){
-      const [a,b]=k.split('|');
-      if(a===id) return b;
-      if(b===id) return a;
-    }
-    return null;
+  function confirmRemoveSelected(){
+    const id = state.selectedId;
+    if(!id){ alert('Select a person to remove.'); return; }
+    const count = descendantsOf(id).size;
+    const extra = count > 1 ? ` and ${count - 1} descendant${count - 1 > 1 ? 's' : ''}` : '';
+    if(!confirm(`Remove ${state.nodes[id].name}${extra}?`)) return;
+    removeBranch(id);
+    state.selectedId = null;
+    render();
   }
+  document.getElementById('removeBranchBtn').addEventListener('click', confirmRemoveSelected);
 
   document.getElementById('addSpouseBtn').addEventListener('click', ()=>{
     const a = document.getElementById('spouseA').value;
     const b = document.getElementById('spouseB').value;
     if(!a || !b || a===b){ alert('Choose two different people.'); return; }
-    const key = spouseKey(a,b);
-    state.spouses.add(key);
+    if(isAncestor(a, b) || isAncestor(b, a)){ alert('A person cannot be linked as a spouse of their own ancestor or descendant.'); return; }
+    state.spouses.add(spouseKey(a,b));
     render();
   });
 
@@ -559,23 +697,31 @@
     const b = document.getElementById('spouseB').value;
     const key = spouseKey(a,b);
     if(state.spouses.has(key)){ state.spouses.delete(key); render(); }
+    else alert('These two people are not linked as spouses.');
   });
 
+  function centerOn(id){
+    const n = state.nodes[id];
+    if(!n) return;
+    viewport.scrollTo({
+      left: Math.max(0, (n.x + NODE_W/2) * state.zoom - viewport.clientWidth/2),
+      top: Math.max(0, (n.y + NODE_H/2) * state.zoom - viewport.clientHeight/2),
+      behavior: 'smooth'
+    });
+  }
+
   document.getElementById('centerOnBtn').addEventListener('click', ()=>{
-    if(!state.selectedId) return;
-    const n = state.nodes[state.selectedId];
-    // center selected roughly in view by panning the svg transform
-    const rect = viewport.getBoundingClientRect();
-    state.panX = Math.max(10, rect.width/2 - (n.x + NODE_W/2)*state.zoom);
-    state.panY = Math.max(10, rect.height/2 - (n.y + NODE_H/2)*state.zoom);
-    svg.style.transform = `translate(${state.panX}px, ${state.panY}px) scale(${state.zoom})`;
+    if(!state.selectedId){ alert('Select a person first.'); return; }
+    centerOn(state.selectedId);
   });
 
   document.getElementById('autoLayoutBtn').addEventListener('click', ()=>{
     autoLayout(); render();
   });
 
-  document.getElementById('downloadBtn').addEventListener('click', downloadPNG);
+  document.getElementById('downloadBtn').addEventListener('click', ()=>{
+    downloadPNG().catch(err => { console.error(err); alert('Could not export the PNG in this browser.'); });
+  });
 
   // ======== Core ops ========
   function addPerson(name, gender='u', x=40, y=40){
@@ -585,12 +731,23 @@
     return id;
   }
 
-  function removeBranch(id){
-    const idsToRemove = new Set();
+  function descendantsOf(id){
+    const ids = new Set();
     (function dfs(cur){
-      idsToRemove.add(cur);
+      if(ids.has(cur)) return;
+      ids.add(cur);
       for(const ch of getChildrenOf(cur)) dfs(ch.id);
     })(id);
+    return ids;
+  }
+
+  function isAncestor(a, b){
+    // is a an ancestor of b?
+    return a !== b && descendantsOf(a).has(b);
+  }
+
+  function removeBranch(id){
+    const idsToRemove = descendantsOf(id);
 
     // remove nodes
     state.order = state.order.filter(nid => !idsToRemove.has(nid));
@@ -610,115 +767,161 @@
 
   // ======== Auto Layout (simple tidy tree) ========
   /**
-   * We compute depths by BFS from each root (node with no parents),
-   * place each generation on a row, and spread siblings horizontally.
-   * Spouse pairs are nudged together.
+   * Each person's generation = 1 + deepest parent's generation; spouses
+   * without parents join their partner's generation. Each generation is a
+   * row; people are ordered by their parents' positions so siblings stay
+   * together, spouses are placed side by side, and rows are centred.
    */
   function autoLayout(){
-    const roots = rootCandidates();
-    // compute depth (level) per BFS from each root
-    const level = /** @type {Record<string, number>} */ ({});
-    const byLevel = /** @type {Record<number, string[]>} */ ({});
-    const visited = new Set();
-    const q = [...roots];
-    for(const r of roots){ level[r]=0; }
-    while(q.length){
-      const cur = q.shift();
-      if(!cur) break;
-      visited.add(cur);
-      const lv = level[cur] ?? 0;
-      const children = getChildrenOf(cur).map(n=>n.id);
-      for(const ch of children){
-        // take min level if multiple parents
-        if(level[ch]==null || level[ch] > lv+1) level[ch] = lv+1;
-        if(!visited.has(ch)) q.push(ch);
+    const level = {};
+    const computeLevel = (id, seen = new Set())=>{
+      if(level[id] != null) return level[id];
+      if(seen.has(id)) return 0;
+      seen.add(id);
+      const ps = [...state.nodes[id].parents].filter(p => state.nodes[p]);
+      level[id] = ps.length ? Math.max(...ps.map(p => computeLevel(p, seen))) + 1 : 0;
+      return level[id];
+    };
+    for(const id of state.order) computeLevel(id);
+
+    // spouses with no parents adopt their partner's generation; their descendants shift too
+    for(let pass = 0; pass < 5; pass++){
+      let changed = false;
+      for(const key of state.spouses){
+        const [a,b] = key.split('|');
+        if(!state.nodes[a] || !state.nodes[b]) continue;
+        for(const [p, q] of [[a,b],[b,a]]){
+          if(state.nodes[p].parents.size === 0 && level[p] < level[q]){ level[p] = level[q]; changed = true; }
+        }
       }
+      // re-derive children levels from (possibly raised) parents
+      for(const id of state.order){
+        const ps = [...state.nodes[id].parents].filter(p => state.nodes[p]);
+        if(ps.length){
+          const lv = Math.max(...ps.map(p => level[p])) + 1;
+          if(lv > level[id]){ level[id] = lv; changed = true; }
+        }
+      }
+      if(!changed) break;
     }
-    // any disconnected nodes get level 0
-    for(const id of state.order){ if(level[id]==null) level[id]=0; }
-    // build byLevel buckets
+
+    const byLevel = {};
     for(const id of state.order){
-      const lv = level[id];
-      if(!byLevel[lv]) byLevel[lv]=[];
-      byLevel[lv].push(id);
+      (byLevel[level[id]] ||= []).push(id);
     }
-    // within each level, group by parent cluster to keep siblings close
-    const positions = /** @type {Record<string,{x:number,y:number}>} */ ({});
-    let cursorY = 40;
+
+    const positions = {};
     const colWidth = NODE_W + GAP_X;
-    for(const lv of Object.keys(byLevel).map(Number).sort((a,b)=>a-b)){
-      const ids = byLevel[lv];
-      // Simple ordering: keep existing order to preserve user's intent
-      // Compute x positions
-      let cursorX = 40;
-      for(const id of ids){
-        positions[id] = {x: cursorX, y: cursorY};
-        cursorX += colWidth;
+    const rows = Object.keys(byLevel).map(Number).sort((a,b)=>a-b);
+    let rowWidths = {};
+    rows.forEach((lv, rowIndex)=>{
+      let ids = byLevel[lv];
+      if(rowIndex > 0){
+        // order by the average x of each person's parents (barycentre), stable otherwise
+        const key = (id)=>{
+          const ps = [...state.nodes[id].parents].filter(p => positions[p]);
+          if(!ps.length) return Infinity;
+          return ps.reduce((s,p)=> s + positions[p].x, 0) / ps.length;
+        };
+        ids = ids.map((id, i) => ({id, i, k: key(id)}))
+          .sort((a,b)=> (a.k === b.k ? a.i - b.i : (a.k === Infinity ? 1 : b.k === Infinity ? -1 : a.k - b.k)))
+          .map(o => o.id);
+        // people without parents in this row: put them next to their spouse
       }
-      cursorY += GAP_Y;
+      // keep spouses adjacent
+      const ordered = [];
+      const placed = new Set();
+      for(const id of ids){
+        if(placed.has(id)) continue;
+        ordered.push(id); placed.add(id);
+        for(const sp of getSpousesOf(id)){
+          if(!placed.has(sp) && level[sp] === lv && state.nodes[sp].parents.size === 0){
+            ordered.push(sp); placed.add(sp);
+          }
+        }
+      }
+      // any spouse with parents that was not yet placed keeps its own order
+      for(const id of ids) if(!placed.has(id)){ ordered.push(id); placed.add(id); }
+
+      ordered.forEach((id, i)=>{
+        positions[id] = {x: MARGIN + i * colWidth, y: MARGIN + rowIndex * GAP_Y};
+      });
+      rowWidths[lv] = ordered.length * colWidth - GAP_X;
+      byLevel[lv] = ordered;
+    });
+
+    // centre each row relative to the widest row
+    const maxWidth = Math.max(0, ...Object.values(rowWidths));
+    for(const lv of rows){
+      const shift = (maxWidth - rowWidths[lv]) / 2;
+      for(const id of byLevel[lv]) positions[id].x += shift;
     }
-    // Nudge spouse pairs to be near each other (average their x's)
-    for(const key of state.spouses){
-      const [a,b]=key.split('|');
-      if(!positions[a] || !positions[b]) continue;
-      const avg = (positions[a].x + positions[b].x)/2;
-      positions[a].x = avg - NODE_W*0.6;
-      positions[b].x = avg + NODE_W*0.6;
-    }
+
     // Apply positions
     for(const id of state.order){
       state.nodes[id].x = positions[id].x;
       state.nodes[id].y = positions[id].y;
     }
-    // Expand SVG if needed
     sizeSVGToContent();
   }
 
   // ======== Export to PNG ========
   async function downloadPNG(){
-    // Ensure current size is correct
-    sizeSVGToContent(80);
-    // Serialize SVG
-    const serializer = new XMLSerializer();
+    if(state.order.length === 0){ alert('Add someone to the tree first.'); return; }
+    const b = contentBounds(60);
+    const w = b.w, h = b.h;
     const svgClone = svg.cloneNode(true);
-    // add inline styles for export (computed style for classes)
-    const style = document.createElement('style');
+    svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    svgClone.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    svgClone.setAttribute('width', w);
+    svgClone.setAttribute('height', h);
+    svgClone.removeAttribute('style');
+    svgClone.querySelectorAll('.node.selected').forEach(n => n.classList.remove('selected'));
+    // resolve CSS variables: an SVG rendered as an image cannot see page CSS
+    const edge = getCSS('--edge');
+    svgClone.querySelectorAll('marker polygon').forEach(p => p.setAttribute('fill', edge));
+    const font = getComputedStyle(document.body).fontFamily.replace(/"/g, "'");
+    const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
     style.textContent = `
-      .edge{ stroke:${getCSS('--edge')}; }
-      .edge.spouse{ stroke:${getCSS('--spouse')}; }
-      .node rect{ fill:${getCSS('--node')}; stroke:${getCSS('--node-border')}; }
-      .node .name{ fill:${getCSS('--text')}; font: 700 13px ${getComputedStyle(document.body).fontFamily}; }
-      .node .meta{ fill:#a9b2e2; font: 11px ${getComputedStyle(document.body).fontFamily}; }
+      .edge{ stroke:${edge}; stroke-width:2.2; fill:none; }
+      .edge.parent{ marker-end:url(#arrowHead); }
+      .edge.spouse{ stroke:${getCSS('--spouse')}; stroke-dasharray:6 4; }
+      .node rect{ fill:${getCSS('--node')}; stroke:${getCSS('--node-border')}; stroke-width:1.2; }
+      .node.selected rect{ stroke:${getCSS('--accent')}; stroke-width:2.4; }
+      .node .name{ fill:${getCSS('--text')}; font: 700 13px ${font}; }
+      .node .meta{ fill:#a9b2e2; font: 11px ${font}; }
     `;
     svgClone.insertBefore(style, svgClone.firstChild);
-    const svgStr = serializer.serializeToString(svgClone);
+    const svgStr = new XMLSerializer().serializeToString(svgClone);
 
     const img = new Image();
-    const svgBlob = new Blob([svgStr], {type: 'image/svg+xml;charset=utf-8'});
-    const url = URL.createObjectURL(svgBlob);
-    await new Promise((res, rej)=>{
-      img.onload = ()=>{ res(); };
-      img.onerror = rej;
-      img.src = url;
-    });
-    const w = parseInt(svg.getAttribute('width')) || 1200;
-    const h = parseInt(svg.getAttribute('height')) || 800;
-    const canvas = document.createElement('canvas');
-    canvas.width = w; canvas.height = h;
-    const ctx = canvas.getContext('2d');
-    // background
-    ctx.fillStyle = '#0f1220';
-    ctx.fillRect(0,0,w,h);
-    ctx.drawImage(img, 0, 0);
-    URL.revokeObjectURL(url);
-
-    const png = canvas.toDataURL('image/png');
-    const a = document.createElement('a');
-    a.href = png;
-    a.download = 'family-tree.png';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    const url = URL.createObjectURL(new Blob([svgStr], {type: 'image/svg+xml;charset=utf-8'}));
+    try{
+      await new Promise((res, rej)=>{
+        img.onload = ()=> res();
+        img.onerror = ()=> rej(new Error('SVG image failed to load'));
+        img.src = url;
+      });
+      const scale = Math.min(2, window.devicePixelRatio || 1);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.ceil(w * scale); canvas.height = Math.ceil(h * scale);
+      const ctx = canvas.getContext('2d');
+      ctx.scale(scale, scale);
+      ctx.fillStyle = '#0f1220';
+      ctx.fillRect(0,0,w,h);
+      ctx.drawImage(img, 0, 0, w, h);
+      const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+      const a = document.createElement('a');
+      const pngUrl = blob ? URL.createObjectURL(blob) : canvas.toDataURL('image/png');
+      a.href = pngUrl;
+      a.download = 'family-tree.png';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      if(blob) setTimeout(()=> URL.revokeObjectURL(pngUrl), 2000);
+    } finally {
+      URL.revokeObjectURL(url);
+    }
   }
 
   function getCSS(varName){
@@ -735,27 +938,43 @@
   const idE = addPerson('Elliot', 'f', 300, 150); state.nodes[idE].parents.add(idB);
   autoLayout();
   select(idA);
-  render();
+  // On narrow screens (phones / small previews) start zoomed out so the whole starter tree is visible
+  (function fitToWidth(){
+    const needed = contentBounds(MARGIN).w;
+    const avail = viewport.clientWidth;
+    if(avail > 0 && needed > avail) setZoom(Math.max(0.5, avail / needed), viewport.getBoundingClientRect().left, viewport.getBoundingClientRect().top);
+  })();
 
   // ======== Keyboard niceties ========
   document.addEventListener('keydown', (e)=>{
+    const t = e.target;
+    // never hijack typing in form fields, and leave browser shortcuts alone
+    if(t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+    if(e.ctrlKey || e.metaKey || e.altKey) return;
     // Delete = remove branch
     if((e.key==='Delete' || e.key==='Backspace') && state.selectedId){
       e.preventDefault();
-      if(confirm(`Remove ${state.nodes[state.selectedId].name} and descendants?`)){
-        removeBranch(state.selectedId);
-        state.selectedId = null;
-        render();
-      }
+      confirmRemoveSelected();
+      return;
     }
     // A = add child of selected
     if(e.key.toLowerCase()==='a' && state.selectedId){
-      document.getElementById('addChildBtn').click();
+      e.preventDefault();
+      addChild();
+      return;
     }
     // R = auto layout
     if(e.key.toLowerCase()==='r'){
+      e.preventDefault();
       autoLayout(); render();
+      return;
     }
+    if(e.key === 'Escape' && state.selectedId){
+      state.selectedId = null; render();
+      return;
+    }
+    if(e.key === '+' || e.key === '='){ setZoom(state.zoom * 1.2); return; }
+    if(e.key === '-'){ setZoom(state.zoom / 1.2); return; }
   });
 
 })();

@@ -172,7 +172,94 @@
         .btn-equals {
             background: linear-gradient(45deg, #ff6b6b, #ee5a24);
             color: white;
-            grid-column: span 2;
+            grid-column: span 3;
+        }
+
+        .btn:focus-visible,
+        .mode-tab:focus-visible,
+        .angle-toggle:focus-visible {
+            outline: 2px solid rgba(255, 255, 255, 0.8);
+            outline-offset: 2px;
+        }
+
+        .display-memory {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .angle-toggle {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            color: white;
+            border-radius: 6px;
+            padding: 2px 8px;
+            font-size: 12px;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+        }
+
+        .display-main.long {
+            font-size: 24px;
+        }
+
+        .display-main.very-long {
+            font-size: 18px;
+        }
+
+        .display-main,
+        .display-history {
+            overflow-wrap: anywhere;
+        }
+
+        .history-list {
+            list-style: none;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 15px;
+            padding: 10px;
+            margin-bottom: 15px;
+            max-height: 420px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            display: block;
+            width: 100%;
+            text-align: right;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            color: white;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            font: inherit;
+            overflow-wrap: anywhere;
+        }
+
+        .history-item:hover {
+            background: rgba(255, 255, 255, 0.16);
+        }
+
+        .history-item .expr {
+            display: block;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 13px;
+        }
+
+        .history-item .res {
+            display: block;
+            font-size: 18px;
+        }
+
+        .history-empty {
+            color: rgba(255, 255, 255, 0.6);
+            text-align: center;
+            padding: 20px 0;
+        }
+
+        .history-clear {
+            width: 100%;
         }
 
         .currency-input {
@@ -212,18 +299,74 @@
             justify-content: center;
         }
 
+        /* Fit the whole keypad in shorter viewports (e.g. an ~800px tall modal) */
+        @media (max-height: 900px) {
+            body {
+                padding: 12px 20px;
+            }
+
+            .calculator-container {
+                padding: 20px 25px;
+            }
+
+            .calculator-header {
+                margin-bottom: 14px;
+            }
+
+            .mode-tabs,
+            .display {
+                margin-bottom: 14px;
+            }
+
+            .display {
+                min-height: 100px;
+                padding: 14px 20px;
+            }
+
+            .memory-display {
+                min-height: 34px;
+                padding: 6px;
+                margin-bottom: 12px;
+            }
+
+            .btn {
+                padding: 14px;
+            }
+
+            .button-grid {
+                gap: 8px;
+                margin-bottom: 4px;
+            }
+        }
+
         @media (max-width: 480px) {
+            body {
+                padding: 12px;
+            }
+
             .calculator-container {
                 padding: 15px;
             }
-            
+
+            .button-grid {
+                gap: 8px;
+            }
+
             .btn {
-                padding: 15px;
+                padding: 14px 4px;
                 font-size: 14px;
             }
-            
+
             .display-main {
                 font-size: 24px;
+            }
+
+            .display-main.long {
+                font-size: 20px;
+            }
+
+            .display-main.very-long {
+                font-size: 16px;
             }
         }
     </style>
@@ -233,15 +376,19 @@
         <div class="calculator-header">
             <h1>Scientific Calculator</h1>
             <div class="mode-tabs">
-                <div class="mode-tab active" onclick="switchMode('calculator')">Calculator</div>
-                <div class="mode-tab" onclick="switchMode('currency')">Currency</div>
+                <div class="mode-tab active" role="button" tabindex="0" data-mode="calculator" onclick="switchMode('calculator')">Calculator</div>
+                <div class="mode-tab" role="button" tabindex="0" data-mode="currency" onclick="switchMode('currency')">Currency</div>
+                <div class="mode-tab" role="button" tabindex="0" data-mode="history" onclick="switchMode('history')">History</div>
             </div>
         </div>
 
         <!-- Calculator Section -->
         <div id="calculator" class="calculator-section active">
             <div class="display">
-                <div class="display-memory" id="memoryDisplay"></div>
+                <div class="display-memory" id="memoryDisplay">
+                    <button type="button" class="angle-toggle" id="angleToggle" onclick="toggleAngleMode()" title="Toggle degrees / radians for sin, cos, tan">DEG</button>
+                    <span id="memoryIndicator"></span>
+                </div>
                 <div class="display-history" id="historyDisplay"></div>
                 <div class="display-main" id="mainDisplay">0</div>
             </div>
@@ -264,8 +411,8 @@
                 <button class="btn btn-function" onclick="calculateFunction('sqrt')">√</button>
                 <button class="btn btn-function" onclick="calculateFunction('power')">x²</button>
                 <button class="btn btn-function" onclick="calculateFunction('factorial')">x!</button>
-                <button class="btn btn-operator" onclick="appendOperator('(')">(</button>
-                <button class="btn btn-operator" onclick="appendOperator(')')">)</button>
+                <button class="btn btn-operator" onclick="appendParen('(')">(</button>
+                <button class="btn btn-operator" onclick="appendParen(')')">)</button>
 
                 <button class="btn btn-clear" onclick="clearAll()">C</button>
                 <button class="btn btn-clear" onclick="clearEntry()">CE</button>
@@ -288,21 +435,27 @@
                 <button class="btn btn-number" onclick="appendNumber('1')">1</button>
                 <button class="btn btn-number" onclick="appendNumber('2')">2</button>
                 <button class="btn btn-number" onclick="appendNumber('3')">3</button>
-                <button class="btn btn-number" onclick="appendNumber('0')" style="grid-row: span 2;">0</button>
+                <button class="btn btn-operator" onclick="toggleSign()">±</button>
                 <button class="btn btn-function" onclick="calculateFunction('percent')">%</button>
 
+                <button class="btn btn-number" onclick="appendNumber('0')">0</button>
                 <button class="btn btn-number" onclick="appendNumber('.')">.</button>
-                <button class="btn btn-operator" onclick="toggleSign()">±</button>
                 <button class="btn btn-equals" onclick="calculate()">=</button>
             </div>
+        </div>
+
+        <!-- History Section -->
+        <div id="history" class="calculator-section">
+            <ul class="history-list" id="historyList"></ul>
+            <button class="btn btn-clear history-clear" onclick="clearHistory()">Clear History</button>
         </div>
 
         <!-- Currency Section -->
         <div id="currency" class="calculator-section">
             <div class="currency-rate" id="exchangeRate">1 USD = ₹83.25 INR (Sample Rate)</div>
             
-            <input type="number" class="currency-input" id="usdInput" placeholder="Enter USD amount" oninput="convertCurrency('usd')">
-            <input type="number" class="currency-input" id="inrInput" placeholder="Enter INR amount" oninput="convertCurrency('inr')">
+            <input type="number" class="currency-input" id="usdInput" placeholder="Enter USD amount" min="0" step="any" inputmode="decimal" aria-label="USD amount" oninput="convertCurrency('usd')">
+            <input type="number" class="currency-input" id="inrInput" placeholder="Enter INR amount" min="0" step="any" inputmode="decimal" aria-label="INR amount" oninput="convertCurrency('inr')">
             
             <div class="currency-grid">
                 <button class="btn btn-function" onclick="setQuickAmount('usd', 1)">$1</button>
@@ -319,151 +472,527 @@
     </div>
 
     <script>
-        let currentInput = '';
-        let operator = '';
-        let previousInput = '';
+        // ===== State =====
+        // The whole expression is kept as a string of tokens:
+        // digits, '.', exponent ("1e+21"), constants 'π' / 'e', operators + - * / and parentheses.
+        // It is evaluated by a small recursive-descent parser (no eval).
+        let expr = '';
         let memory = 0;
         let lastResult = 0;
+        let angleMode = 'deg';
+        let errorMessage = '';      // non-empty => display shows an error
+        let justEvaluated = false;  // last action was "=" (next digit starts fresh)
+        let freshOperand = false;   // last action produced a value (function / MR), next digit replaces it
+        let lastExpressionText = '';
+        let history = [];
         let exchangeRate = 83.25; // USD to INR rate
 
+        const HISTORY_KEY = 'scientificCalculatorHistory';
+        const HISTORY_LIMIT = 30;
+        const OPERATORS = '+-*/';
+        const NUMBER_END_RE = /(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i;
+
+        // ===== Storage (guarded: may be unavailable in sandboxed iframes / private mode) =====
+        function loadHistory() {
+            try {
+                const raw = localStorage.getItem(HISTORY_KEY);
+                const parsed = raw ? JSON.parse(raw) : [];
+                history = Array.isArray(parsed) ? parsed.filter(h => h && typeof h.expr === 'string' && typeof h.result === 'string').slice(0, HISTORY_LIMIT) : [];
+            } catch (e) {
+                history = [];
+            }
+        }
+
+        function saveHistory() {
+            try {
+                localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+            } catch (e) { /* ignore */ }
+        }
+
+        // ===== Safe expression parser =====
+        function tokenize(str) {
+            const tokens = [];
+            let i = 0;
+            while (i < str.length) {
+                const ch = str[i];
+                if (ch === ' ') { i++; continue; }
+                const numMatch = str.slice(i).match(/^(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?/i);
+                if (numMatch) {
+                    tokens.push({ type: 'num', value: parseFloat(numMatch[0]) });
+                    i += numMatch[0].length;
+                    continue;
+                }
+                if (ch === 'π') { tokens.push({ type: 'num', value: Math.PI }); i++; continue; }
+                if (ch === 'e') { tokens.push({ type: 'num', value: Math.E }); i++; continue; }
+                if ('+-*/()'.includes(ch)) { tokens.push({ type: 'op', value: ch }); i++; continue; }
+                throw new Error('Invalid input');
+            }
+            return tokens;
+        }
+
+        function evaluateExpression(str) {
+            const tokens = tokenize(str);
+            let pos = 0;
+            const peek = () => tokens[pos];
+            const isOp = (v) => peek() && peek().type === 'op' && peek().value === v;
+
+            function parseExpr() {
+                let value = parseTerm();
+                while (isOp('+') || isOp('-')) {
+                    const op = tokens[pos++].value;
+                    const rhs = parseTerm();
+                    value = op === '+' ? value + rhs : value - rhs;
+                }
+                return value;
+            }
+            function parseTerm() {
+                let value = parseUnary();
+                while (isOp('*') || isOp('/')) {
+                    const op = tokens[pos++].value;
+                    const rhs = parseUnary();
+                    if (op === '/') {
+                        if (rhs === 0) throw new Error('Cannot divide by 0');
+                        value = value / rhs;
+                    } else {
+                        value = value * rhs;
+                    }
+                }
+                return value;
+            }
+            function parseUnary() {
+                if (isOp('-')) { pos++; return -parseUnary(); }
+                if (isOp('+')) { pos++; return parseUnary(); }
+                return parsePrimary();
+            }
+            function parsePrimary() {
+                const t = peek();
+                if (!t) throw new Error('Invalid input');
+                if (t.type === 'num') { pos++; return t.value; }
+                if (t.value === '(') {
+                    pos++;
+                    const v = parseExpr();
+                    if (!isOp(')')) throw new Error('Invalid input');
+                    pos++;
+                    return v;
+                }
+                throw new Error('Invalid input');
+            }
+
+            if (tokens.length === 0) throw new Error('Invalid input');
+            const result = parseExpr();
+            if (pos !== tokens.length) throw new Error('Invalid input');
+            if (!isFinite(result)) throw new Error('Error');
+            return result;
+        }
+
+        // ===== Helpers =====
+        function formatNumber(value) {
+            if (Object.is(value, -0) || value === 0) return '0';
+            // 15 significant digits hides binary floating-point noise (0.1 + 0.2 -> 0.3)
+            const rounded = parseFloat(value.toPrecision(15));
+            if (Math.abs(rounded) >= 1e15) return rounded.toExponential();
+            return rounded.toString();
+        }
+
+        function lastChar() {
+            return expr.slice(-1);
+        }
+
+        function openParenCount() {
+            let open = 0;
+            for (const ch of expr) {
+                if (ch === '(') open++;
+                else if (ch === ')') open--;
+            }
+            return open;
+        }
+
+        function closeExpression(str) {
+            let s = str;
+            while (s && OPERATORS.includes(s.slice(-1))) s = s.slice(0, -1);
+            while (s.endsWith('(')) s = s.slice(0, -1);
+            let open = 0;
+            for (const ch of s) {
+                if (ch === '(') open++;
+                else if (ch === ')') open--;
+            }
+            return s + ')'.repeat(Math.max(0, open));
+        }
+
+        // Returns the trailing operand of the expression: {start, text} or null.
+        function getTrailingOperand() {
+            if (!expr) return null;
+            let start;
+            if (lastChar() === ')') {
+                let depth = 0;
+                for (let i = expr.length - 1; i >= 0; i--) {
+                    if (expr[i] === ')') depth++;
+                    else if (expr[i] === '(') {
+                        depth--;
+                        if (depth === 0) { start = i; break; }
+                    }
+                }
+                if (start === undefined) return null;
+            } else if (lastChar() === 'π' || lastChar() === 'e' && !/\d$/.test(expr.slice(0, -1))) {
+                start = expr.length - 1;
+            } else {
+                const m = expr.match(NUMBER_END_RE);
+                if (!m) return null;
+                start = expr.length - m[0].length;
+            }
+            // include a unary minus (at the start or right after '(')
+            if (start > 0 && expr[start - 1] === '-' && (start - 1 === 0 || '(*/'.includes(expr[start - 2]))) {
+                start--;
+            }
+            return { start, text: expr.slice(start) };
+        }
+
+        function endsWithValue() {
+            const c = lastChar();
+            return /[\d.)πe]/.test(c);
+        }
+
+        // Builds the string to insert for a value at position `start`
+        function valueString(value, start) {
+            const s = formatNumber(value);
+            if (s.startsWith('-') && start > 0 && expr[start - 1] !== '(') {
+                return `(${s})`;
+            }
+            return s;
+        }
+
+        function resetIfDone() {
+            if (errorMessage || justEvaluated) {
+                expr = '';
+                errorMessage = '';
+                justEvaluated = false;
+                freshOperand = false;
+            }
+        }
+
+        function showError(message) {
+            errorMessage = message || 'Error';
+            expr = '';
+            justEvaluated = false;
+            freshOperand = false;
+            updateDisplay();
+        }
+
+        function prettify(str) {
+            return str.replace(/\*/g, '×').replace(/\//g, '÷');
+        }
+
+        // ===== UI =====
         function switchMode(mode) {
-            document.querySelectorAll('.mode-tab').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.calculator-section').forEach(section => section.classList.remove('active'));
-            
-            event.target.classList.add('active');
-            document.getElementById(mode).classList.add('active');
+            document.querySelectorAll('.mode-tab').forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.mode === mode);
+            });
+            document.querySelectorAll('.calculator-section').forEach(section => {
+                section.classList.toggle('active', section.id === mode);
+            });
+            if (mode === 'history') renderHistory();
         }
 
         function updateDisplay() {
             const display = document.getElementById('mainDisplay');
-            const history = document.getElementById('historyDisplay');
-            
-            if (currentInput === '') {
-                display.textContent = '0';
-            } else {
-                display.textContent = currentInput;
-            }
-            
-            if (previousInput && operator) {
-                history.textContent = `${previousInput} ${operator}`;
-            } else {
-                history.textContent = '';
-            }
+            const historyLine = document.getElementById('historyDisplay');
+
+            const text = errorMessage || (expr === '' ? '0' : prettify(expr));
+            display.textContent = text;
+            display.classList.toggle('long', text.length > 14 && text.length <= 22);
+            display.classList.toggle('very-long', text.length > 22);
+
+            historyLine.textContent = lastExpressionText;
         }
 
         function updateMemoryDisplay() {
             const memoryStatus = document.getElementById('memoryStatus');
+            const indicator = document.getElementById('memoryIndicator');
             if (memory !== 0) {
-                memoryStatus.textContent = `Memory: ${memory}`;
+                memoryStatus.textContent = `Memory: ${formatNumber(memory)}`;
                 memoryStatus.style.background = 'rgba(46, 213, 115, 0.3)';
+                indicator.textContent = 'M';
             } else {
                 memoryStatus.textContent = 'Memory: Empty';
                 memoryStatus.style.background = 'rgba(255, 255, 255, 0.1)';
+                indicator.textContent = '';
             }
         }
 
+        function toggleAngleMode() {
+            angleMode = angleMode === 'deg' ? 'rad' : 'deg';
+            document.getElementById('angleToggle').textContent = angleMode.toUpperCase();
+        }
+
+        function addHistory(exprText, resultText) {
+            history.unshift({ expr: exprText, result: resultText });
+            if (history.length > HISTORY_LIMIT) history.length = HISTORY_LIMIT;
+            saveHistory();
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const list = document.getElementById('historyList');
+            list.innerHTML = '';
+            if (history.length === 0) {
+                const li = document.createElement('li');
+                li.className = 'history-empty';
+                li.textContent = 'No calculations yet.';
+                list.appendChild(li);
+                return;
+            }
+            history.forEach(item => {
+                const li = document.createElement('li');
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'history-item';
+                btn.title = 'Use this result';
+                const e = document.createElement('span');
+                e.className = 'expr';
+                e.textContent = item.expr + ' =';
+                const r = document.createElement('span');
+                r.className = 'res';
+                r.textContent = item.result;
+                btn.append(e, r);
+                btn.addEventListener('click', () => {
+                    expr = item.result;
+                    errorMessage = '';
+                    justEvaluated = true;
+                    freshOperand = false;
+                    lastExpressionText = item.expr + ' =';
+                    switchMode('calculator');
+                    updateDisplay();
+                });
+                li.appendChild(btn);
+                list.appendChild(li);
+            });
+        }
+
+        function clearHistory() {
+            history = [];
+            saveHistory();
+            renderHistory();
+        }
+
+        // ===== Input handling =====
         function appendNumber(number) {
-            if (number === '.' && currentInput.includes('.')) return;
-            currentInput += number;
+            resetIfDone();
+            if (freshOperand) {
+                const operand = getTrailingOperand();
+                if (operand) expr = expr.slice(0, operand.start);
+                freshOperand = false;
+            }
+
+            const c = lastChar();
+            const signWrapped = /\(-(?:\d+\.?\d*|\.\d+)\)$/.test(expr);
+
+            if (signWrapped) {
+                // keep typing inside "(-12)"
+                const inner = expr.slice(0, -1);
+                const numPart = inner.match(NUMBER_END_RE)[0];
+                if (number === '.' && (numPart.includes('.') || /e/i.test(numPart))) return;
+                if (number !== '.' && numPart === '0') {
+                    expr = inner.slice(0, -1) + number + ')';
+                } else {
+                    expr = inner + number + ')';
+                }
+                updateDisplay();
+                return;
+            }
+
+            if (c === ')' || c === 'π' || (c === 'e' && !/\d$/.test(expr.slice(0, -1)))) {
+                expr += '*';
+            }
+
+            const numMatch = expr.match(NUMBER_END_RE);
+            const currentNumber = numMatch ? numMatch[0] : '';
+
+            if (number === '.') {
+                if (currentNumber.includes('.') || /e/i.test(currentNumber)) return;
+                expr += currentNumber ? '.' : '0.';
+            } else if (currentNumber === '0') {
+                expr = expr.slice(0, -1) + number; // no leading zeros
+            } else {
+                if (/e[+-]?\d+$/i.test(currentNumber)) return; // don't extend exponent results
+                expr += number;
+            }
             updateDisplay();
         }
 
         function appendOperator(op) {
-            if (currentInput === '' && op !== '(' && op !== ')') return;
-            
-            if (op === '(' || op === ')') {
-                currentInput += op;
-            } else {
-                if (previousInput && operator && currentInput) {
-                    calculate();
+            if (op === '×') op = '*';
+            if (op === '÷') op = '/';
+            if (errorMessage) {
+                errorMessage = '';
+                expr = '';
+            }
+            justEvaluated = false;
+            freshOperand = false;
+
+            const c = lastChar();
+            if (expr === '') {
+                expr = op === '-' ? '-' : '0' + op;
+            } else if (c === '(') {
+                if (op === '-') expr += '-';
+            } else if (OPERATORS.includes(c)) {
+                const before = expr.slice(0, -1);
+                // a unary minus (at start or after '(') cannot become a binary operator
+                if (before === '' || before.endsWith('(')) {
+                    if (op !== '-') expr = before;
+                } else if (c === '-' && (before.endsWith('*') || before.endsWith('/'))) {
+                    // "5×-" : replace the operator pair, or keep the unary minus
+                    if (op !== '-') expr = before.slice(0, -1) + op;
+                } else if (op === '-' && (c === '*' || c === '/')) {
+                    expr += '-'; // unary minus after × or ÷, e.g. 5×-3
+                } else {
+                    expr = before + op;
                 }
-                operator = op;
-                previousInput = currentInput || lastResult.toString();
-                currentInput = '';
+            } else {
+                expr += op;
+            }
+            updateDisplay();
+        }
+
+        function appendParen(paren) {
+            if (paren === '(') {
+                resetIfDone();
+                if (endsWithValue()) expr += '*';
+                expr += '(';
+                freshOperand = false;
+            } else {
+                if (errorMessage || justEvaluated) return;
+                const c = lastChar();
+                if (openParenCount() <= 0 || c === '(' || OPERATORS.includes(c) || c === '') return;
+                expr += ')';
+                freshOperand = false;
             }
             updateDisplay();
         }
 
         function calculate() {
-            if (!previousInput || !operator || !currentInput) return;
-            
+            if (errorMessage || expr === '') return;
+            const closed = closeExpression(expr);
+            if (!closed) return;
             try {
-                let expression = `${previousInput} ${operator} ${currentInput}`;
-                expression = expression.replace(/×/g, '*');
-                
-                let result = eval(expression);
-                
-                if (isNaN(result) || !isFinite(result)) {
-                    throw new Error('Invalid calculation');
-                }
-                
+                const result = evaluateExpression(closed);
+                const resultText = formatNumber(result);
+                const isTrivial = /^-?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i.test(closed) && parseFloat(closed) === result;
+                lastExpressionText = prettify(closed) + ' =';
+                if (!isTrivial) addHistory(prettify(closed), resultText);
                 lastResult = result;
-                currentInput = result.toString();
-                previousInput = '';
-                operator = '';
+                expr = resultText;
+                justEvaluated = true;
+                freshOperand = false;
                 updateDisplay();
             } catch (error) {
-                currentInput = 'Error';
-                updateDisplay();
+                lastExpressionText = prettify(closed) + ' =';
+                showError(error.message === 'Cannot divide by 0' ? error.message : 'Error');
             }
+        }
+
+        function toRadians(v) {
+            return angleMode === 'deg' ? v * Math.PI / 180 : v;
+        }
+
+        function snap(v) {
+            return Math.abs(v) < 1e-12 ? 0 : v;
         }
 
         function calculateFunction(func) {
-            let value = parseFloat(currentInput) || 0;
-            let result;
-            
-            try {
-                switch (func) {
-                    case 'sin':
-                        result = Math.sin(value * Math.PI / 180);
-                        break;
-                    case 'cos':
-                        result = Math.cos(value * Math.PI / 180);
-                        break;
-                    case 'tan':
-                        result = Math.tan(value * Math.PI / 180);
-                        break;
-                    case 'log':
-                        result = Math.log10(value);
-                        break;
-                    case 'ln':
-                        result = Math.log(value);
-                        break;
-                    case 'sqrt':
-                        result = Math.sqrt(value);
-                        break;
-                    case 'power':
-                        result = value * value;
-                        break;
-                    case 'factorial':
-                        result = factorial(value);
-                        break;
-                    case 'pi':
-                        result = Math.PI;
-                        break;
-                    case 'e':
-                        result = Math.E;
-                        break;
-                    case 'percent':
-                        result = value / 100;
-                        break;
+            if (func === 'pi' || func === 'e') {
+                resetIfDone();
+                if (freshOperand) {
+                    const operand = getTrailingOperand();
+                    if (operand) expr = expr.slice(0, operand.start);
+                    freshOperand = false;
                 }
-                
-                if (isNaN(result) || !isFinite(result)) {
-                    throw new Error('Invalid calculation');
-                }
-                
-                currentInput = result.toString();
+                if (endsWithValue()) expr += '*';
+                expr += func === 'pi' ? 'π' : 'e';
                 updateDisplay();
-            } catch (error) {
-                currentInput = 'Error';
-                updateDisplay();
+                return;
             }
+
+            if (errorMessage) { errorMessage = ''; expr = ''; }
+            justEvaluated = false;
+
+            let operand = getTrailingOperand();
+            if (!operand) {
+                if (expr !== '') return; // expression ends with an operator or '('
+                operand = { start: 0, text: '0' };
+            }
+
+            let value;
+            try {
+                value = evaluateExpression(closeExpression(operand.text));
+            } catch (e) {
+                showError('Error');
+                return;
+            }
+
+            let result;
+            let label;
+            const v = formatNumber(value);
+            const unit = angleMode === 'deg' ? '°' : ' rad';
+            switch (func) {
+                case 'sin':
+                    result = snap(Math.sin(toRadians(value)));
+                    label = `sin(${v}${unit})`;
+                    break;
+                case 'cos':
+                    result = snap(Math.cos(toRadians(value)));
+                    label = `cos(${v}${unit})`;
+                    break;
+                case 'tan': {
+                    const r = toRadians(value);
+                    if (Math.abs(Math.cos(r)) < 1e-12) { result = NaN; }
+                    else result = snap(Math.tan(r));
+                    label = `tan(${v}${unit})`;
+                    break;
+                }
+                case 'log':
+                    result = value > 0 ? Math.log10(value) : NaN;
+                    label = `log(${v})`;
+                    break;
+                case 'ln':
+                    result = value > 0 ? Math.log(value) : NaN;
+                    label = `ln(${v})`;
+                    break;
+                case 'sqrt':
+                    result = value >= 0 ? Math.sqrt(value) : NaN;
+                    label = `√(${v})`;
+                    break;
+                case 'power':
+                    result = value * value;
+                    label = `(${v})²`;
+                    break;
+                case 'factorial':
+                    result = factorial(value);
+                    label = `${v}!`;
+                    break;
+                case 'percent':
+                    result = value / 100;
+                    label = `${v}%`;
+                    break;
+                default:
+                    return;
+            }
+
+            if (isNaN(result) || !isFinite(result)) {
+                lastExpressionText = label;
+                showError('Error');
+                return;
+            }
+
+            expr = expr.slice(0, operand.start) + valueString(result, operand.start);
+            freshOperand = true;
+            lastResult = result;
+            lastExpressionText = `${label} = ${formatNumber(result)}`;
+            addHistory(label, formatNumber(result));
+            updateDisplay();
         }
 
         function factorial(n) {
-            if (n < 0 || n !== Math.floor(n)) return NaN;
-            if (n === 0 || n === 1) return 1;
+            if (n < 0 || n !== Math.floor(n) || n > 170) return NaN;
             let result = 1;
             for (let i = 2; i <= n; i++) {
                 result *= i;
@@ -472,36 +1001,87 @@
         }
 
         function clearAll() {
-            currentInput = '';
-            previousInput = '';
-            operator = '';
+            expr = '';
+            errorMessage = '';
+            justEvaluated = false;
+            freshOperand = false;
+            lastExpressionText = '';
             updateDisplay();
         }
 
         function clearEntry() {
-            currentInput = '';
+            if (errorMessage || justEvaluated) {
+                clearAll();
+                return;
+            }
+            const operand = getTrailingOperand();
+            if (operand) expr = expr.slice(0, operand.start);
+            freshOperand = false;
             updateDisplay();
         }
 
         function backspace() {
-            currentInput = currentInput.slice(0, -1);
+            if (errorMessage) {
+                clearAll();
+                return;
+            }
+            justEvaluated = false;
+            freshOperand = false;
+            if (/e[+-]\d+$/i.test(expr)) {
+                expr = expr.replace(/(?:\d+\.?\d*|\.\d+)e[+-]\d+$/i, ''); // drop whole exponent number
+            } else {
+                expr = expr.slice(0, -1);
+            }
             updateDisplay();
         }
 
         function toggleSign() {
-            if (currentInput) {
-                currentInput = (parseFloat(currentInput) * -1).toString();
+            if (errorMessage) return;
+            const wrapped = expr.match(/\(-((?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?|π|e)\)$/i);
+            if (wrapped) {
+                expr = expr.slice(0, expr.length - wrapped[0].length) + wrapped[1];
                 updateDisplay();
+                return;
+            }
+            const operand = getTrailingOperand();
+            if (!operand) return;
+            let text = operand.text;
+            if (text.startsWith('-')) {
+                expr = expr.slice(0, operand.start) + text.slice(1);
+            } else if (operand.start === 0 || expr[operand.start - 1] === '(') {
+                expr = expr.slice(0, operand.start) + '-' + text;
+            } else {
+                expr = expr.slice(0, operand.start) + '(-' + text + ')';
+            }
+            justEvaluated = false;
+            updateDisplay();
+        }
+
+        function currentValue() {
+            if (errorMessage || expr === '') return 0;
+            try {
+                return evaluateExpression(closeExpression(expr));
+            } catch (e) {
+                return null;
             }
         }
 
         function memoryStore() {
-            memory = parseFloat(currentInput) || 0;
+            const v = currentValue();
+            if (v === null) return;
+            memory = v;
             updateMemoryDisplay();
         }
 
         function memoryRecall() {
-            currentInput = memory.toString();
+            resetIfDone();
+            const operand = getTrailingOperand();
+            if (operand) {
+                expr = expr.slice(0, operand.start) + valueString(memory, operand.start);
+            } else {
+                expr += valueString(memory, expr.length);
+            }
+            freshOperand = true;
             updateDisplay();
         }
 
@@ -511,27 +1091,36 @@
         }
 
         function memoryAdd() {
-            memory += parseFloat(currentInput) || 0;
+            const v = currentValue();
+            if (v === null) return;
+            memory += v;
             updateMemoryDisplay();
         }
 
         function memorySubtract() {
-            memory -= parseFloat(currentInput) || 0;
+            const v = currentValue();
+            if (v === null) return;
+            memory -= v;
             updateMemoryDisplay();
         }
 
-        // Currency functions
+        // ===== Currency functions =====
         function convertCurrency(from) {
             const usdInput = document.getElementById('usdInput');
             const inrInput = document.getElementById('inrInput');
-            
-            if (from === 'usd') {
-                const usdValue = parseFloat(usdInput.value) || 0;
-                inrInput.value = (usdValue * exchangeRate).toFixed(2);
-            } else {
-                const inrValue = parseFloat(inrInput.value) || 0;
-                usdInput.value = (inrValue / exchangeRate).toFixed(2);
+            const source = from === 'usd' ? usdInput : inrInput;
+            const target = from === 'usd' ? inrInput : usdInput;
+
+            if (source.value === '') {
+                target.value = '';
+                return;
             }
+            const value = parseFloat(source.value);
+            if (isNaN(value)) {
+                target.value = '';
+                return;
+            }
+            target.value = (from === 'usd' ? value * exchangeRate : value / exchangeRate).toFixed(2);
         }
 
         function setQuickAmount(currency, amount) {
@@ -549,19 +1138,27 @@
             document.getElementById('inrInput').value = '';
         }
 
+        // Swap: convert the same amount in the opposite direction (e.g. $100 -> ₹100)
         function swapCurrency() {
             const usdInput = document.getElementById('usdInput');
             const inrInput = document.getElementById('inrInput');
-            const temp = usdInput.value;
-            usdInput.value = inrInput.value;
-            inrInput.value = temp;
+            const amount = usdInput.value;
+            if (amount === '') {
+                if (inrInput.value !== '') {
+                    usdInput.value = inrInput.value;
+                    convertCurrency('usd');
+                }
+                return;
+            }
+            inrInput.value = amount;
+            convertCurrency('inr');
         }
 
         function updateExchangeRate() {
             // Simulate getting a new exchange rate
             exchangeRate = 83.25 + (Math.random() - 0.5) * 2;
             document.getElementById('exchangeRate').textContent = `1 USD = ₹${exchangeRate.toFixed(2)} INR (Updated Rate)`;
-            
+
             // Reconvert if there's a value
             const usdInput = document.getElementById('usdInput');
             if (usdInput.value) {
@@ -569,27 +1166,59 @@
             }
         }
 
-        // Initialize
+        // ===== Initialize =====
+        loadHistory();
         updateDisplay();
         updateMemoryDisplay();
+        renderHistory();
 
-        // Keyboard support
+        document.querySelectorAll('.mode-tab').forEach(tab => {
+            tab.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    switchMode(tab.dataset.mode);
+                }
+            });
+        });
+
+        // ===== Keyboard support =====
         document.addEventListener('keydown', function(event) {
+            const target = event.target;
+            if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable)) return;
+            if (event.ctrlKey || event.metaKey || event.altKey) return;
+            if (!document.getElementById('calculator').classList.contains('active')) return;
+
             const key = event.key;
-            
+            let handled = true;
+
             if (key >= '0' && key <= '9') {
                 appendNumber(key);
-            } else if (key === '.') {
+            } else if (key === '.' || key === ',') {
                 appendNumber('.');
             } else if (key === '+' || key === '-' || key === '*' || key === '/') {
-                appendOperator(key === '*' ? '×' : key);
+                appendOperator(key);
+            } else if (key === 'x' || key === 'X') {
+                appendOperator('*');
+            } else if (key === '(' || key === ')') {
+                appendParen(key);
+            } else if (key === '%') {
+                calculateFunction('percent');
+            } else if (key === '!') {
+                calculateFunction('factorial');
             } else if (key === 'Enter' || key === '=') {
                 calculate();
             } else if (key === 'Escape') {
                 clearAll();
+            } else if (key === 'Delete') {
+                clearEntry();
             } else if (key === 'Backspace') {
                 backspace();
+            } else {
+                handled = false;
             }
+
+            if (handled) event.preventDefault();
         });
     </script>
 </body>

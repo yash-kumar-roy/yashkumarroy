@@ -21,24 +21,31 @@
 
   .board{width:100%;max-width:980px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:12px;padding:12px;border:1px solid rgba(255,255,255,0.04);box-shadow:0 10px 30px rgba(2,6,23,0.6)}
 
-  .topbar{display:flex;gap:8px;align-items:center}
+  .topbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
   .btn{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted);padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px}
   .btn.primary{background:linear-gradient(90deg,var(--accent),var(--accent-2));border:0;color:#041024;font-weight:700}
   .btn.ghost{background:transparent}
+  .btn:hover{border-color:rgba(255,255,255,0.18);color:#e6f0f6}
+  .btn.primary:hover{color:#041024;filter:brightness(1.08)}
+  .btn:disabled{opacity:0.5;cursor:not-allowed}
+  .empty{padding:20px;text-align:center;color:var(--muted);border:1px dashed rgba(255,255,255,0.08);border-radius:10px}
 
   .content{display:flex;gap:12px;margin-top:12px}
-  .left{flex:1;min-width:220px}
-  .right{width:360px;max-width:40%}
+  .left{flex:1;min-width:0}
+  .right{width:320px;max-width:40%;flex:0 0 auto}
 
   .habit-list{display:flex;flex-direction:column;gap:8px}
-  .habit{display:flex;align-items:center;gap:10px;padding:8px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));border:1px solid rgba(255,255,255,0.02)}
-  .dot{width:38px;height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700}
-  .hmeta{flex:1}
-  .hname{font-weight:600}
+  .habit{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:8px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));border:1px solid rgba(255,255,255,0.02)}
+  .dot{width:38px;height:38px;flex:0 0 38px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,0.45)}
+  .hmeta{flex:1 1 120px;min-width:0}
+  .hname{font-weight:600;overflow-wrap:anywhere}
+  .hactions{display:flex;gap:8px;flex:0 0 auto;margin-left:auto}
   .hsub{font-size:13px;color:var(--muted)}
 
-  .days{display:flex;gap:6px;align-items:center;overflow:auto;padding:8px 4px}
-  .day{width:36px;height:36px;flex:0 0 36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;border:1px solid rgba(255,255,255,0.03);cursor:pointer}
+  .days{display:flex;gap:6px;align-items:center;overflow-x:auto;padding:8px 4px;min-width:0;max-width:100%}
+  .day{width:36px;height:36px;flex:0 0 36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font:inherit;font-size:11px;padding:0;color:inherit;background:transparent;border:1px solid rgba(255,255,255,0.08);cursor:pointer}
+  .day:focus-visible,.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .day.today{box-shadow:0 0 0 1px rgba(6,182,212,0.55)}
   .day.good{background:linear-gradient(180deg, rgba(16,185,129,0.18), rgba(16,185,129,0.08));border-color:rgba(16,185,129,0.3);color:#dffaf0}
   .day.skip{background:linear-gradient(180deg, rgba(245,158,11,0.13), rgba(245,158,11,0.06));border-color:rgba(245,158,11,0.2);color:#fff7e6}
   .day.none{background:transparent;color:var(--muted)}
@@ -48,19 +55,26 @@
   .small{font-size:13px;color:var(--muted)}
 
   .right .card{background:transparent;border:0;padding:0}
-  .chart{height:120px;border-radius:8px;padding:10px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));border:1px solid rgba(255,255,255,0.02);display:flex;flex-direction:column;gap:8px}
+  .chart{min-height:120px;border-radius:8px;padding:10px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));border:1px solid rgba(255,255,255,0.02);display:flex;flex-direction:column;gap:8px}
   .spark{display:flex;gap:6px;align-items:end;height:56px}
-  .bar{width:12px;border-radius:4px;background:rgba(255,255,255,0.08)}
+  .bar{flex:1;max-width:22px;border-radius:4px;background:rgba(255,255,255,0.08)}
+  .bar.filled{background:linear-gradient(180deg,var(--accent),var(--accent-2))}
 
   .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 
-  footer{width:100%;max-width:980px;color:var(--muted);font-size:13px;display:flex;justify-content:space-between}
+  footer{width:100%;max-width:980px;color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:4px 12px;justify-content:space-between}
 
   /* responsive */
   @media (max-width:900px){
     .content{flex-direction:column}
     .right{width:100%;max-width:100%}
     .days{padding:6px}
+  }
+  @media (max-width:520px){
+    .app{padding:12px 10px}
+    .board{padding:10px}
+    .days{order:3;flex:1 1 100%;padding:4px 0;justify-content:space-between}
+    .day{flex:1 1 0;width:auto;min-width:32px;max-width:44px}
   }
 </style>
 </head>
@@ -114,12 +128,12 @@
   </div>
 
   <!-- Edit/Add modal (simple) -->
-  <div id="modal" style="display:none;position:fixed;inset:0;background:rgba(2,6,23,0.6);align-items:center;justify-content:center">
+  <div id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" style="display:none;position:fixed;inset:0;background:rgba(2,6,23,0.6);align-items:center;justify-content:center;padding:12px;z-index:10">
     <div style="background:var(--card);padding:16px;border-radius:10px;width:360px;max-width:92%;border:1px solid rgba(255,255,255,0.04)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><strong id="modalTitle">Add Habit</strong><button id="closeModal" class="btn">Close</button></div>
       <div style="display:flex;flex-direction:column;gap:8px">
-        <input id="habitName" placeholder="Habit name (e.g. 5-min reading)" style="padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit">
-        <input id="habitColor" type="color" value="#7c3aed" style="height:38px;border-radius:6px;border:0;padding:4px">
+        <input id="habitName" maxlength="60" aria-label="Habit name" placeholder="Habit name (e.g. 5-min reading)" style="padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit">
+        <input id="habitColor" type="color" aria-label="Habit color" value="#7c3aed" style="width:100%;height:38px;border-radius:6px;border:0;padding:4px">
         <div style="display:flex;gap:8px;justify-content:flex-end">
           <button id="saveHabit" class="btn primary">Save</button>
         </div>
@@ -131,6 +145,34 @@
 // --- Data model ---
 const MAX_HABITS = 7;
 const STORAGE_KEY = 'micro_habits_v1';
+const VALID_STATES = ['good', 'skip'];
+
+// --- Utils ---
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+// Local calendar date as YYYY-MM-DD (toISOString() is UTC and shifts the day in many timezones)
+function toISO(d){ const dt=new Date(d); const p=n=>String(n).padStart(2,'0'); return `${dt.getFullYear()}-${p(dt.getMonth()+1)}-${p(dt.getDate())}`; }
+function dateShift(d, offset){ const c=new Date(d); c.setDate(c.getDate()+offset); return c; }
+function load(){ try{ const raw = localStorage.getItem(STORAGE_KEY); return raw? normalizeStore(JSON.parse(raw)) : null;}catch(e){return null;} }
+function save(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(store)); }catch(e){ /* storage unavailable — keep working in memory */ } }
+
+// Validate/clean data from storage or an imported file
+function normalizeStore(data){
+  if(!data || !Array.isArray(data.habits)) return null;
+  const habits = data.habits
+    .filter(h => h && typeof h.name === 'string' && h.name.trim())
+    .slice(0, MAX_HABITS)
+    .map(h => {
+      const records = {};
+      if(h.records && typeof h.records === 'object'){
+        Object.keys(h.records).forEach(k => {
+          if(/^\d{4}-\d{2}-\d{2}$/.test(k) && VALID_STATES.includes(h.records[k])) records[k] = h.records[k];
+        });
+      }
+      const color = /^#[0-9a-f]{6}$/i.test(h.color) ? h.color : '#7c3aed';
+      return { id: typeof h.id === 'string' && h.id ? h.id : uid(), name: h.name.trim().slice(0, 60), color, records };
+    });
+  return { habits, created: typeof data.created === 'string' ? data.created : toISO(new Date()) };
+}
 
 // demo data (few days)
 function demoData(){
@@ -140,22 +182,15 @@ function demoData(){
   const d3 = toISO(dateShift(new Date(),-3));
   return {
     habits: [
-      {id:uid(),name:'5‑min reading',color:'#7c3aed',records:{[d3]:'good',[d2]:'good',[d1]:'none',[today]:'good'}},
-      {id:uid(),name:'Meditate',color:'#06b6d4',records:{[d3]:'skip',[d2]:'good',[d1]:'good',[today]:'none'}},
-      {id:uid(),name:'Walk 10 min',color:'#10b981',records:{[d3]:'none',[d2]:'good',[d1]:'good',[today]:'good'}},
+      {id:uid(),name:'5‑min reading',color:'#7c3aed',records:{[d3]:'good',[d2]:'good',[today]:'good'}},
+      {id:uid(),name:'Meditate',color:'#06b6d4',records:{[d3]:'skip',[d2]:'good',[d1]:'good'}},
+      {id:uid(),name:'Walk 10 min',color:'#10b981',records:{[d2]:'good',[d1]:'good',[today]:'good'}},
     ],
     created: toISO(new Date())
   };
 }
 
 let store = load() || demoData();
-
-// --- Utils ---
-function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
-function toISO(d){ const dt=new Date(d); dt.setHours(0,0,0,0); return dt.toISOString().slice(0,10); }
-function dateShift(d, offset){ const c=new Date(d); c.setDate(c.getDate()+offset); return c; }
-function load(){ try{ const raw = localStorage.getItem(STORAGE_KEY); return raw? JSON.parse(raw): null;}catch(e){return null;} }
-function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(store)); }
 
 // --- DOM refs ---
 const habitList = document.getElementById('habitList');
@@ -175,43 +210,59 @@ const clearData = document.getElementById('clearData');
 const resetStreaks = document.getElementById('resetStreaks');
 
 let editingId = null;
+let lastFocus = null;
 
-// compute last N days (including today)
+// compute last N days (including today), oldest first
 function lastNDays(n){ const arr=[]; for(let i=n-1;i>=0;i--){ arr.push(toISO(dateShift(new Date(), -i))); } return arr; }
-const DAYS = lastNDays(7);
-
-document.addEventListener('DOMContentLoaded', render);
+let DAYS = lastNDays(7);
+const STATE_LABEL = { good: 'done', skip: 'skipped', none: 'not logged' };
 
 // --- Rendering ---
 function render(){
-  todayLabel.textContent = toISO(new Date());
+  DAYS = lastNDays(7); // recompute so the board rolls over at midnight
+  todayLabel.textContent = DAYS[DAYS.length-1];
   habitList.innerHTML = '';
+  if(!store.habits.length){
+    const empty = document.createElement('div'); empty.className='empty';
+    empty.textContent = 'No habits yet — tap “+ Add Habit” to start tracking.';
+    habitList.appendChild(empty);
+  }
   store.habits.forEach(h => habitList.appendChild(renderHabit(h)));
   renderOverview();
   totalHabits.textContent = store.habits.length;
+  addHabit.disabled = store.habits.length >= MAX_HABITS;
+  addHabit.title = addHabit.disabled ? `Maximum ${MAX_HABITS} habits` : '';
   save();
 }
 
 function renderHabit(h){
   const el = document.createElement('div'); el.className='habit';
-  const dot = document.createElement('div'); dot.className='dot'; dot.style.background=h.color; dot.textContent = h.name.split(' ')[0][0] || '?';
+  const dot = document.createElement('div'); dot.className='dot'; dot.style.background=h.color; dot.textContent = (Array.from(h.name.trim())[0] || '?').toUpperCase();
   const meta = document.createElement('div'); meta.className='hmeta';
   const name = document.createElement('div'); name.className='hname'; name.textContent = h.name;
-  const sub = document.createElement('div'); sub.className='hsub'; sub.textContent = `Streak: ${calcStreak(h)} • Last: ${lastStatus(h)}`;
+  const streak = calcStreak(h);
+  const sub = document.createElement('div'); sub.className='hsub';
+  sub.textContent = `Streak: ${streak} day${streak===1?'':'s'} • Today: ${STATE_LABEL[lastStatus(h)]}`;
   meta.appendChild(name); meta.appendChild(sub);
 
   const daysWrap = document.createElement('div'); daysWrap.className='days';
-  DAYS.slice().reverse().forEach(dt=>{
+  DAYS.slice().reverse().forEach((dt, idx)=>{
     const st = h.records[dt] || 'none';
-    const d = document.createElement('div'); d.className='day '+(st==='good'?'good':st==='skip'?'skip':'none'); d.title = dt; d.dataset.date = dt;
+    const d = document.createElement('button'); d.type='button';
+    d.className='day '+(st==='good'?'good':st==='skip'?'skip':'none');
+    d.dataset.date = dt;
+    const label = idx===0 ? 'Today' : dt;
+    d.title = `${label}: ${STATE_LABEL[st]} — click to change`;
+    d.setAttribute('aria-label', `${h.name}, ${label}: ${STATE_LABEL[st]}`);
     d.textContent = dt.slice(5);
+    if(idx===0) d.classList.add('today');
     d.addEventListener('click', ()=>{ cycleDay(h.id, dt); });
     daysWrap.appendChild(d);
   });
 
-  const actions = document.createElement('div'); actions.style.display='flex'; actions.style.gap='8px';
-  const edit = document.createElement('button'); edit.className='btn'; edit.textContent='Edit'; edit.addEventListener('click',()=>openEdit(h.id));
-  const del = document.createElement('button'); del.className='btn'; del.textContent='Delete'; del.addEventListener('click',()=>{ if(confirm('Delete this habit?')){ deleteHabit(h.id); }});
+  const actions = document.createElement('div'); actions.className='hactions';
+  const edit = document.createElement('button'); edit.type='button'; edit.className='btn'; edit.textContent='Edit'; edit.addEventListener('click',()=>openEdit(h.id));
+  const del = document.createElement('button'); del.type='button'; del.className='btn'; del.textContent='Delete'; del.addEventListener('click',()=>{ if(confirm(`Delete habit “${h.name}”?`)){ deleteHabit(h.id); }});
   actions.appendChild(edit); actions.appendChild(del);
 
   el.appendChild(dot); el.appendChild(meta); el.appendChild(daysWrap); el.appendChild(actions);
@@ -219,24 +270,20 @@ function renderHabit(h){
 }
 
 function renderOverview(){
-  // average completion across habits for last 7 days
-  const counts = DAYS.map(d => {
-    let total=0; let possible=0;
-    store.habits.forEach(h=>{
-      const r = h.records[d]; if(r==='good') total++; if(r!=='none') possible++; // skipped counts as attempted
-    });
-    return {d,total,possible};
-  });
-  // simple bars: height by completion percent
+  // completion across habits for each of the last 7 days (oldest → today)
   overviewSpark.innerHTML='';
-  let sumPct=0; let count=0;
-  counts.forEach(c=>{
-    const pct = store.habits.length? (c.total / store.habits.length) : 0;
-    sumPct += pct; count++;
-    const bar = document.createElement('div'); bar.className='bar'; bar.style.height = Math.max(6, Math.round(pct*56))+'px'; bar.title = `${c.d}: ${Math.round(pct*100)}%`;
+  let sumPct=0;
+  DAYS.forEach(d=>{
+    let done=0;
+    store.habits.forEach(h=>{ if(h.records[d]==='good') done++; });
+    const pct = store.habits.length ? done / store.habits.length : 0;
+    sumPct += pct;
+    const bar = document.createElement('div'); bar.className='bar'+(pct>0?' filled':'');
+    bar.style.height = Math.max(6, Math.round(pct*56))+'px';
+    bar.title = `${d}: ${Math.round(pct*100)}% (${done}/${store.habits.length})`;
     overviewSpark.appendChild(bar);
   });
-  const avg = count? Math.round((sumPct/count)*100) : 0;
+  const avg = DAYS.length ? Math.round((sumPct/DAYS.length)*100) : 0;
   avgComp.textContent = avg + '%';
 }
 
@@ -246,19 +293,32 @@ addHabit.addEventListener('click', ()=>{
   editingId = null; habitName.value=''; habitColor.value='#7c3aed'; openModal();
 });
 
-saveHabit.addEventListener('click', ()=>{
-  const name = habitName.value.trim(); if(!name) { alert('Enter a habit name'); return; }
+function submitHabit(){
+  const name = habitName.value.trim(); if(!name) { alert('Enter a habit name'); habitName.focus(); return; }
   const color = habitColor.value;
   if(editingId){
     const h = store.habits.find(x=>x.id===editingId); if(h){ h.name = name; h.color = color; }
   } else {
+    if(store.habits.length>=MAX_HABITS){ alert('Maximum '+MAX_HABITS+' habits allowed.'); return; }
     const h = {id:uid(),name,color,records:{}}; store.habits.push(h);
   }
   closeModalFunc(); render();
-});
+}
+saveHabit.addEventListener('click', submitHabit);
+habitName.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); submitHabit(); } });
 closeModal.addEventListener('click', closeModalFunc);
-function openModal(){ modal.style.display='flex'; document.getElementById('modalTitle').textContent = editingId? 'Edit Habit' : 'Add Habit'; }
-function closeModalFunc(){ modal.style.display='none'; editingId=null; }
+modal.addEventListener('click', e=>{ if(e.target===modal) closeModalFunc(); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape' && modal.style.display==='flex') closeModalFunc(); });
+function openModal(){
+  lastFocus = document.activeElement;
+  modal.style.display='flex';
+  document.getElementById('modalTitle').textContent = editingId? 'Edit Habit' : 'Add Habit';
+  setTimeout(()=>habitName.focus(), 0);
+}
+function closeModalFunc(){
+  modal.style.display='none'; editingId=null;
+  if(lastFocus && document.contains(lastFocus)) lastFocus.focus();
+}
 function openEdit(id){ const h = store.habits.find(x=>x.id===id); if(!h) return; editingId = id; habitName.value = h.name; habitColor.value = h.color || '#7c3aed'; openModal(); }
 
 function deleteHabit(id){ store.habits = store.habits.filter(h=>h.id!==id); render(); }
@@ -267,32 +327,60 @@ function cycleDay(hid, date){
   const h = store.habits.find(x=>x.id===hid); if(!h) return;
   const cur = h.records[date] || 'none';
   const next = cur==='none'? 'good' : cur==='good'? 'skip' : 'none';
-  h.records[date] = next;
   // remove none entries to keep data small
-  if(h.records[date]==='none') delete h.records[date];
+  if(next==='none') delete h.records[date]; else h.records[date] = next;
   render();
+  // keep keyboard focus on the same day cell after re-render
+  const cell = habitList.querySelector(`.habit:nth-child(${store.habits.findIndex(x=>x.id===hid)+1}) .day[data-date="${date}"]`);
+  if(cell) cell.focus({preventScroll:true});
 }
 
+// Streak = consecutive 'good' days ending today, across the full history.
+// 'skip' days don't break (or add to) a streak. If today isn't logged yet,
+// the streak still counts up to yesterday so it doesn't drop to 0 each morning.
 function calcStreak(h){
-  // count consecutive good days up to today, skipping 'skip' (doesn't break streak)
-  let streak=0; for(let i=0;i<DAYS.length;i++){ const d = DAYS[DAYS.length-1 - i]; const s = h.records[d] || 'none'; if(s==='good'){ streak++; } else if(s==='skip'){ continue; } else break; } return streak;
+  let streak = 0;
+  let i = 0;
+  if(!h.records[toISO(new Date())]) i = 1;
+  for(; i <= 3660; i++){ // safety cap (~10 years)
+    const s = h.records[toISO(dateShift(new Date(), -i))];
+    if(s==='good') streak++;
+    else if(s!=='skip') break;
+  }
+  return streak;
 }
-function lastStatus(h){ const d = DAYS[DAYS.length-1]; return h.records[d]||'none'; }
+function lastStatus(h){ return h.records[DAYS[DAYS.length-1]]||'none'; }
 
 // export/import
 exportBtn.addEventListener('click', ()=>{
   const blob = new Blob([JSON.stringify(store, null, 2)], {type:'application/json'});
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'micro_habits.json'; a.click();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'micro_habits.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
 });
 
 importBtn.addEventListener('click', ()=>{
-  const inp = document.createElement('input'); inp.type='file'; inp.accept='application/json'; inp.onchange = async (ev)=>{
-    const f = ev.target.files[0]; if(!f) return; try{ const txt = await f.text(); const data = JSON.parse(txt); if(Array.isArray(data.habits)){ store = data; save(); render(); alert('Imported.'); } else alert('Invalid file'); } catch(e){ alert('Parse error: '+e); }
+  const inp = document.createElement('input'); inp.type='file'; inp.accept='application/json,.json'; inp.onchange = async (ev)=>{
+    const f = ev.target.files[0]; if(!f) return;
+    try{
+      const data = normalizeStore(JSON.parse(await f.text()));
+      if(data){ store = data; render(); alert(`Imported ${data.habits.length} habit${data.habits.length===1?'':'s'}.`); }
+      else alert('Invalid file: expected a JSON export with a "habits" list.');
+    } catch(e){ alert('Could not read file: '+e.message); }
   }; inp.click();
 });
 
-clearData.addEventListener('click', ()=>{ if(confirm('Clear all recorded days (keeps habit names)?')){ store.habits.forEach(h=>h.records={}); save(); render(); } });
-resetStreaks.addEventListener('click', ()=>{ if(confirm('Reset streaks and clear recent days?')){ store.habits.forEach(h=>h.records={}); save(); render(); } });
+clearData.addEventListener('click', ()=>{ if(confirm('Clear all recorded days (keeps habit names)?')){ store.habits.forEach(h=>h.records={}); render(); } });
+resetStreaks.addEventListener('click', ()=>{
+  if(confirm('Reset streaks by clearing the last 7 days? Older history is kept.')){
+    store.habits.forEach(h=>{ DAYS.forEach(d=>{ delete h.records[d]; }); });
+    render();
+  }
+});
+
+// Re-render when the tab becomes visible again (e.g. after midnight)
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden && DAYS[DAYS.length-1] !== toISO(new Date())) render(); });
 
 // init rendering
 render();

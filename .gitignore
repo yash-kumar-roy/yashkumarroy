@@ -1,9 +1,12 @@
 # API Keys and Secrets
 config.js
 .env
+.env.*
+!.env.example
 
 # Dependencies
 node_modules/
+dist/
 
 # OS generated files
 .DS_Store

@@ -13,21 +13,49 @@
     header h1{font-size:20px;margin:0}
     .controls{display:grid;grid-template-columns:1fr 260px;gap:16px;margin-top:16px}
     .panel{background:rgba(255,255,255,0.02);padding:14px;border-radius:10px;border:1px solid rgba(255,255,255,0.02)}
-    .drop{min-height:150px;border:2px dashed rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;padding:12px;border-radius:8px}
-    .btn{background:var(--accent);color:#042022;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600}
+    .drop{min-height:150px;border:2px dashed rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;padding:12px;border-radius:8px;cursor:pointer;text-align:center;transition:border-color .15s,background .15s}
+    .drop:hover,.drop:focus-visible{border-color:rgba(6,182,212,0.6);outline:none}
+    .drop.over{border-color:#06b6d4;background:rgba(6,182,212,0.06)}
+    .controls > .panel{min-width:0}
+    .btn{background:var(--accent);color:#042022;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600;font-family:inherit}
+    .btn:disabled,.linkish:disabled{opacity:.5;cursor:not-allowed}
+    .btn:focus-visible,.linkish:focus-visible{outline:2px solid #06b6d4;outline-offset:2px}
     input[type=range]{width:100%}
     label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
     .small{font-size:13px;color:var(--muted)}
     .options{display:flex;flex-direction:column;gap:10px}
     .row{display:flex;gap:10px;align-items:center}
-    .thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-top:14px}
-    .thumb{background:#02101a;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.02);display:flex;flex-direction:column;gap:8px}
+    .thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(160px,100%),1fr));gap:12px;margin-top:14px}
+    .thumb{background:#02101a;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.02);display:flex;flex-direction:column;gap:8px;min-width:0}
     .thumb img{width:100%;height:120px;object-fit:cover;border-radius:6px}
-    .meta{font-size:12px;color:var(--muted);display:flex;justify-content:space-between}
-    .actions{display:flex;gap:8px}
-    .linkish{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted);padding:6px 8px;border-radius:6px;cursor:pointer}
+    .meta{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:8px;min-width:0}
+    .meta > div{min-width:0}
+    .meta .name{font-weight:600;color:#e6eef6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .meta .bigger{color:#fbbf24}
+    .empty{grid-column:1/-1;text-align:center;padding:24px 8px}
+    .actions{display:flex;flex-wrap:wrap;gap:6px}
+    .actions button{flex:1 1 auto;padding:6px 8px;font-size:12px}
+    .linkish{background:transparent;border:1px solid rgba(255,255,255,0.08);color:var(--muted);padding:6px 8px;border-radius:6px;cursor:pointer;font-family:inherit}
+    .linkish:hover:not(:disabled){color:#e6eef6}
+    /* in-page before/after preview (popups are blocked inside sandboxed iframes) */
+    .pv-backdrop{position:fixed;inset:0;background:rgba(2,6,23,0.75);display:none;align-items:center;justify-content:center;padding:16px;z-index:20}
+    .pv-backdrop.open{display:flex}
+    .pv{background:#0b1220;border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px;width:min(960px,100%);max-height:100%;overflow:auto;display:flex;flex-direction:column;gap:10px}
+    .pv-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+    .pv-head strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .pv-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .pv-grid figure{margin:0;display:flex;flex-direction:column;gap:6px;min-width:0}
+    .pv-grid img{width:100%;max-height:60vh;object-fit:contain;background:repeating-conic-gradient(#0f1a26 0 25%,#0a131d 0 50%) 0 0/16px 16px;border-radius:8px}
+    .pv-grid figcaption{font-size:12px;color:var(--muted)}
     footer{margin-top:12px;display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted)}
-    @media (max-width:720px){.controls{grid-template-columns:1fr}}
+    @media (max-width:720px){.controls{grid-template-columns:minmax(0,1fr)}}
+    @media (max-width:480px){
+      body{padding:10px}
+      .app{padding:14px}
+      header h1{font-size:18px}
+      .pv-grid{grid-template-columns:1fr}
+      footer{flex-wrap:wrap;gap:4px}
+    }
   </style>
 </head>
 <body>
@@ -45,25 +73,25 @@
 
     <div class="controls">
       <div class="panel">
-        <div class="drop" id="dropzone" tabindex="0">
+        <div class="drop" id="dropzone" tabindex="0" role="button" aria-label="Choose images to compress">
           <div style="font-weight:700">Drop images here or click to select</div>
           <div class="small">Supports JPG, PNG, WebP. Multiple files supported.</div>
           <input id="fileInput" type="file" accept="image/*" multiple style="display:none">
         </div>
 
         <div style="margin-top:12px;display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap">
-          <div style="flex:1">
+          <div style="flex:1 1 140px;min-width:0">
             <label class="small">Quality: <span id="qualityVal">0.8</span></label>
             <input id="quality" type="range" min="0.1" max="1" step="0.05" value="0.8">
           </div>
           <div style="width:120px">
             <label class="small">Max width (px)</label>
-            <input id="maxWidth" type="number" min="16" placeholder="auto" style="width:100%;padding:6px;border-radius:6px;border:none;background:#06131a;color:#dff6fb">
+            <input id="maxWidth" type="number" min="16" inputmode="numeric" placeholder="auto" style="width:100%;padding:6px;border-radius:6px;border:none;background:#06131a;color:#dff6fb">
           </div>
         </div>
 
         <div style="margin-top:12px;display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap">
-          <div style="flex:1">
+          <div style="flex:1 1 130px;min-width:0">
             <label class="small">Output format</label>
             <select id="format" style="width:100%;padding:8px;border-radius:6px;background:#07121a;border:none;color:#e6eef6">
               <option value="auto">Keep original</option>
@@ -72,20 +100,20 @@
               <option value="image/png">PNG (lossless)</option>
             </select>
           </div>
-          <div style="width:120px">
+          <div style="width:150px;flex:1 1 150px">
             <label class="small">Resize mode</label>
             <select id="resizeMode" style="width:100%;padding:8px;border-radius:6px;background:#07121a;border:none;color:#e6eef6">
               <option value="fit">Fit (maintain aspect)</option>
-              <option value="cover">Cover (crop)</option>
+              <option value="cover">Cover (square crop)</option>
               <option value="noscale">No scale</option>
             </select>
           </div>
         </div>
 
-        <div style="display:flex;gap:8px;margin-top:12px;align-items:center">
-          <button id="compressBtn" class="btn">Compress Selected</button>
-          <button id="downloadAllBtn" class="linkish" title="Download all compressed files" disabled>Download All</button>
-          <button id="clearBtn" class="linkish">Clear</button>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center">
+          <button type="button" id="compressBtn" class="btn">Compress Selected</button>
+          <button type="button" id="downloadAllBtn" class="linkish" title="Download all compressed files" disabled>Download All</button>
+          <button type="button" id="clearBtn" class="linkish">Clear</button>
         </div>
 
         <div class="small" style="margin-top:10px">Tip: Use WebP for smallest size. PNG is lossless and may not shrink much.</div>
@@ -107,6 +135,16 @@
     </footer>
   </div>
 
+  <div class="pv-backdrop" id="previewModal" role="dialog" aria-modal="true" aria-labelledby="pvTitle">
+    <div class="pv">
+      <div class="pv-head"><strong id="pvTitle">Preview</strong><button class="linkish" id="pvClose" type="button">Close</button></div>
+      <div class="pv-grid">
+        <figure><img id="pvBefore" alt="Original"><figcaption id="pvBeforeCap">Original</figcaption></figure>
+        <figure><img id="pvAfter" alt="Compressed"><figcaption id="pvAfterCap">Compressed</figcaption></figure>
+      </div>
+    </div>
+  </div>
+
   <!-- JSZip for "download all" zip creation. Using CDN so this remains a single HTML file. -->
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.0/dist/jszip.min.js"></script>
   <script>
@@ -121,187 +159,267 @@
     const clearBtn = byId('clearBtn');
     const qualityRange = byId('quality');
     const qualityVal = byId('qualityVal');
+    const previewModal = byId('previewModal');
 
-    let files = []; // {file, img, dataUrl, compressedBlob, compressedSize}
+    let files = []; // {file, name, img, url, width, height, compressedBlob, compressedSize, compressedUrl}
 
     // UI bindings
     dropzone.addEventListener('click', ()=> fileInput.click());
-    dropzone.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') fileInput.click() });
-    fileInput.addEventListener('change', (e)=> handleFiles(e.target.files));
+    dropzone.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); fileInput.click(); } });
+    fileInput.addEventListener('change', (e)=>{ handleFiles(e.target.files); fileInput.value = ''; });
 
     // Drag drop
     ['dragenter','dragover'].forEach(ev=>{
-      dropzone.addEventListener(ev, (e)=>{ e.preventDefault(); dropzone.style.borderColor = '#06b6d4' });
+      dropzone.addEventListener(ev, (e)=>{ e.preventDefault(); if(e.dataTransfer) e.dataTransfer.dropEffect='copy'; dropzone.classList.add('over'); });
     });
     ['dragleave','drop'].forEach(ev=>{
-      dropzone.addEventListener(ev, (e)=>{ e.preventDefault(); dropzone.style.borderColor = '' });
+      dropzone.addEventListener(ev, (e)=>{ e.preventDefault(); dropzone.classList.remove('over'); });
     });
-    dropzone.addEventListener('drop', (e)=>{ handleFiles(e.dataTransfer.files) });
+    dropzone.addEventListener('drop', (e)=>{ e.stopPropagation(); if(e.dataTransfer) handleFiles(e.dataTransfer.files); });
+    // a file dropped anywhere else on the page would otherwise make the browser navigate away to it
+    window.addEventListener('dragover', (e)=> e.preventDefault());
+    window.addEventListener('drop', (e)=>{ e.preventDefault(); if(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) handleFiles(e.dataTransfer.files); });
 
-    qualityRange.addEventListener('input', ()=> qualityVal.textContent = qualityRange.value);
+    qualityRange.addEventListener('input', ()=> qualityVal.textContent = (+qualityRange.value).toFixed(2));
+    qualityVal.textContent = (+qualityRange.value).toFixed(2);
 
-    clearBtn.addEventListener('click', ()=>{ files=[]; render(); });
+    clearBtn.addEventListener('click', ()=>{ files.forEach(releaseUrls); files=[]; render(); updateDownloadAllState(); });
 
     compressBtn.addEventListener('click', async ()=>{
       if(files.length===0){ alert('No files selected.'); return; }
       compressBtn.disabled = true; compressBtn.textContent = 'Compressing...';
+      // wait for any images that are still decoding
+      await Promise.all(files.map(f => f.ready).filter(Boolean));
       for(let i=0;i<files.length;i++){
-        try{ await compressItem(files[i], i); renderItem(files[i], i); }
-        catch(err){ console.error(err); files[i].error = err.message || String(err); }
+        const it = files[i];
+        try{ await compressItem(it); it.error = null; }
+        catch(err){ console.error(err); it.error = err.message || String(err); }
+        renderItem(it, files.indexOf(it));
       }
       compressBtn.disabled = false; compressBtn.textContent = 'Compress Selected';
       updateDownloadAllState();
       render();
     });
 
+    function outputName(it, blob){
+      const ext = (blob.type.split('/')[1] || 'img').replace('jpeg','jpg').replace('svg+xml','svg');
+      const suffix = it.compressedBlob ? '_compressed.' : '.';
+      return (it.name||'image').replace(/\.[^/.]+$/, '') + suffix + ext;
+    }
+    function triggerDownload(blob, name){
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = name; a.style.display='none';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=> URL.revokeObjectURL(url), 2000);
+    }
+
     downloadAllBtn.addEventListener('click', async ()=>{
-      if(files.length===0) return;
+      const ready = files.filter(f => f.compressedBlob);
+      if(ready.length===0) return;
+      if(typeof JSZip === 'undefined'){
+        // zip library failed to load (offline?) — fall back to individual downloads
+        ready.forEach((it, i)=> setTimeout(()=> triggerDownload(it.compressedBlob, outputName(it, it.compressedBlob)), i*300));
+        return;
+      }
       downloadAllBtn.disabled = true; downloadAllBtn.textContent = 'Preparing zip...';
-      const zip = new JSZip();
-      files.forEach((it, idx)=>{
-        const blob = it.compressedBlob || it.file;
-        const ext = blob.type.split('/')[1] || 'img';
-        const baseName = (it.file.name || ('image'+idx));
-        const name = baseName.replace(/\.[^/.]+$/, '') + '_compressed.' + (ext==='jpeg'? 'jpg': ext);
-        zip.file(name, blob);
-      });
-      const content = await zip.generateAsync({type:'blob'});
-      const url = URL.createObjectURL(content);
-      const a = document.createElement('a'); a.href = url; a.download = 'photos_compressed.zip'; document.body.appendChild(a); a.click(); a.remove();
-      URL.revokeObjectURL(url);
-      downloadAllBtn.disabled = false; downloadAllBtn.textContent = 'Download All';
+      try{
+        const zip = new JSZip();
+        const used = new Set();
+        ready.forEach((it)=>{
+          let name = outputName(it, it.compressedBlob);
+          // avoid collisions for files with the same name
+          let n = 1; const base = name.replace(/(\.[^.]+)$/, ''); const ext = name.slice(base.length);
+          while(used.has(name)) name = base + '_' + (n++) + ext;
+          used.add(name);
+          zip.file(name, it.compressedBlob);
+        });
+        const content = await zip.generateAsync({type:'blob'});
+        triggerDownload(content, 'photos_compressed.zip');
+      } catch(err){ alert('Could not create zip: ' + (err.message || err)); }
+      downloadAllBtn.textContent = 'Download All';
+      updateDownloadAllState();
     });
 
     function handleFiles(fileList){
-      const arr = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+      const arr = Array.from(fileList || []).filter(f => f && f.type && f.type.startsWith('image/'));
       if(arr.length===0){ alert('Please select image files only.'); return; }
       arr.forEach(file => {
-        const existing = files.find(f => f.file.name === file.name && f.file.size === file.size);
+        const existing = files.find(f => f.file.name === file.name && f.file.size === file.size && f.file.lastModified === file.lastModified);
         if(existing) return; // skip duplicates
-        const reader = new FileReader();
-        const entry = { file, name: file.name, originalSize: file.size };
+        const entry = { file, name: file.name || 'pasted-image.' + (file.type.split('/')[1]||'png'), originalSize: file.size };
+        entry.url = URL.createObjectURL(file);
         files.push(entry);
-        reader.onload = e => { entry.dataUrl = e.target.result; createImage(entry); render(); };
-        reader.readAsDataURL(file);
+        entry.ready = createImage(entry);
       });
       render();
     }
 
     function createImage(entry){
-      const img = new Image(); img.onload = ()=>{ entry.img = img; renderItem(entry, files.indexOf(entry)); };
-      img.onerror = ()=>{ entry.error = 'Failed to load image'; render(); };
-      img.src = entry.dataUrl;
+      return new Promise(resolve => {
+        const img = new Image();
+        img.onload = ()=>{
+          entry.img = img; entry.width = img.naturalWidth || img.width; entry.height = img.naturalHeight || img.height;
+          if(!entry.width || !entry.height) entry.error = 'Image has no intrinsic size';
+          const idx = files.indexOf(entry); if(idx >= 0) renderItem(entry, idx);
+          resolve();
+        };
+        img.onerror = ()=>{ entry.error = 'Failed to load image (unsupported format?)'; if(files.includes(entry)) render(); resolve(); };
+        img.src = entry.url;
+      });
+    }
+
+    function releaseUrls(it){
+      if(it.url) URL.revokeObjectURL(it.url);
+      if(it.compressedUrl) URL.revokeObjectURL(it.compressedUrl);
     }
 
     function render(){
       thumbs.innerHTML = '';
+      if(files.length===0){
+        const e = document.createElement('div'); e.className='small empty'; e.textContent='No images yet — add some to see previews here.';
+        thumbs.appendChild(e);
+      }
       files.forEach((it, idx)=> renderItem(it, idx));
-      stats.textContent = files.length + ' file' + (files.length===1?'':'s');
+      const done = files.filter(f=>f.compressedBlob);
+      let text = files.length + ' file' + (files.length===1?'':'s');
+      if(done.length){
+        const orig = done.reduce((a,f)=>a+f.originalSize,0), comp = done.reduce((a,f)=>a+f.compressedSize,0);
+        text += ` · ${formatBytes(orig)} → ${formatBytes(comp)}`;
+      }
+      stats.textContent = text;
     }
 
     function renderItem(it, idx){
+      if(idx < 0) return;
       const el = document.createElement('div'); el.className = 'thumb';
       const img = document.createElement('img');
-      if(it.dataUrl) img.src = it.dataUrl; else img.alt = 'loading...';
+      img.alt = it.name || 'image';
+      const src = it.compressedUrl || it.url; if(src) img.src = src;
       el.appendChild(img);
 
       const meta = document.createElement('div'); meta.className = 'meta';
-      const left = document.createElement('div'); left.innerHTML = `<div style="font-weight:600">${escapeHtml(it.name || 'image')}</div><div class="small">${formatBytes(it.originalSize || 0)}</div>`;
-      const right = document.createElement('div'); right.style.textAlign='right';
-      if(it.compressedSize){ right.innerHTML = `<div class="small">${formatBytes(it.compressedSize)}</div><div class="small">saved ${percent(it.originalSize,it.compressedSize)}</div>`; }
+      const left = document.createElement('div');
+      const dims = it.width ? `${it.width}×${it.height}` : '';
+      left.innerHTML = `<div class="name" title="${escapeHtml(it.name || 'image')}">${escapeHtml(it.name || 'image')}</div><div class="small">${formatBytes(it.originalSize || 0)}</div>${dims?`<div class="small">${dims}</div>`:''}`;
+      const right = document.createElement('div'); right.style.textAlign='right'; right.style.flexShrink='0';
+      if(it.compressedSize){
+        const bigger = it.compressedSize > it.originalSize;
+        right.innerHTML = `<div class="small">${formatBytes(it.compressedSize)}</div><div class="small ${bigger?'bigger':''}">${bigger ? percent(it.originalSize,it.compressedSize).replace('-','+') + ' larger' : 'saved ' + percent(it.originalSize,it.compressedSize)}</div>${it.outW?`<div class="small">${it.outW}×${it.outH}</div>`:''}`;
+      }
       else if(it.error) right.innerHTML = `<div style="color:#ff6b6b">Error</div>`;
       else right.innerHTML = '<div class="small">Not compressed</div>';
       meta.appendChild(left); meta.appendChild(right);
       el.appendChild(meta);
 
       const actions = document.createElement('div'); actions.className = 'actions';
-      const removeBtn = document.createElement('button'); removeBtn.className='linkish'; removeBtn.textContent='Remove'; removeBtn.onclick = ()=>{ files.splice(idx,1); render(); updateDownloadAllState(); };
+      const removeBtn = document.createElement('button'); removeBtn.type='button'; removeBtn.className='linkish'; removeBtn.textContent='Remove';
+      removeBtn.onclick = ()=>{ const i = files.indexOf(it); if(i>=0){ files.splice(i,1); releaseUrls(it); } render(); updateDownloadAllState(); };
       actions.appendChild(removeBtn);
 
-      const downloadBtn = document.createElement('button'); downloadBtn.className='btn'; downloadBtn.textContent='Download';
+      const downloadBtn = document.createElement('button'); downloadBtn.type='button'; downloadBtn.className='btn'; downloadBtn.textContent='Download';
+      downloadBtn.title = it.compressedBlob ? 'Download compressed image' : 'Not compressed yet — downloads the original';
       downloadBtn.onclick = ()=>{
         const blob = it.compressedBlob || it.file;
-        const ext = (blob.type.split('/')[1] || 'img');
-        const name = (it.name||'image').replace(/\.[^/.]+$/, '') + '_compressed.' + (ext==='jpeg'?'jpg':ext);
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+        triggerDownload(blob, outputName(it, blob));
       };
       actions.appendChild(downloadBtn);
 
       if(it.compressedBlob){
-        const previewBtn = document.createElement('button'); previewBtn.className='linkish'; previewBtn.textContent='Preview'; previewBtn.onclick = ()=>{
-          const url = URL.createObjectURL(it.compressedBlob); const w = window.open('', '_blank'); if(w){ w.document.write(`<img src="${url}" style="max-width:100%">`); }
-        };
+        const previewBtn = document.createElement('button'); previewBtn.type='button'; previewBtn.className='linkish'; previewBtn.textContent='Preview';
+        previewBtn.onclick = ()=> openPreview(it);
         actions.appendChild(previewBtn);
       }
 
       if(it.error){
-        const e = document.createElement('div'); e.style.color='#ff8b8b'; e.style.marginTop='6px'; e.textContent = it.error; el.appendChild(e);
+        const e = document.createElement('div'); e.style.color='#ff8b8b'; e.style.fontSize='12px'; e.textContent = it.error; el.appendChild(e);
       }
 
       el.appendChild(actions);
       // replace or append
-      const existing = thumbs.children[idx];
+      const existing = thumbs.querySelectorAll('.thumb')[idx];
+      const empty = thumbs.querySelector('.empty'); if(empty) empty.remove();
       if(existing) thumbs.replaceChild(el, existing); else thumbs.appendChild(el);
     }
 
-    function formatBytes(bytes){ if(!bytes) return '0 B'; const units=['B','KB','MB','GB']; let i=0; while(bytes>=1024 && i<units.length-1){ bytes/=1024; i++; } return bytes.toFixed(2)+' '+units[i]; }
+    // in-page before / after preview
+    function openPreview(it){
+      byId('pvTitle').textContent = it.name || 'Preview';
+      byId('pvBefore').src = it.url;
+      byId('pvAfter').src = it.compressedUrl;
+      byId('pvBeforeCap').textContent = `Original · ${formatBytes(it.originalSize)} · ${it.width}×${it.height}`;
+      byId('pvAfterCap').textContent = `Compressed · ${formatBytes(it.compressedSize)} · ${it.outW}×${it.outH} · ${it.compressedBlob.type.replace('image/','').toUpperCase()}`;
+      previewModal.classList.add('open');
+      byId('pvClose').focus();
+    }
+    function closePreview(){ previewModal.classList.remove('open'); }
+    byId('pvClose').addEventListener('click', closePreview);
+    previewModal.addEventListener('click', (e)=>{ if(e.target === previewModal) closePreview(); });
+    document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && previewModal.classList.contains('open')) closePreview(); });
+
+    function formatBytes(bytes){ if(!bytes) return '0 B'; const units=['B','KB','MB','GB']; let i=0; while(bytes>=1024 && i<units.length-1){ bytes/=1024; i++; } return (i===0?bytes:bytes.toFixed(2))+' '+units[i]; }
     function percent(orig, comp){ if(!orig) return ''; const p = Math.round((1 - (comp/orig))*100); return p+'%'; }
 
-    async function compressItem(item, idx){
+    async function compressItem(item){
       // If no image or failed to load, skip
-      if(!item.img) throw new Error('Image not ready');
+      if(!item.img || !item.width) throw new Error(item.error || 'Image not ready');
       const formatSelect = byId('format').value;
       let mimeType = formatSelect === 'auto' ? (item.file.type || 'image/jpeg') : formatSelect;
-      // PNG chosen => browsers ignore quality param; we'll still draw to canvas
+      // canvas can only encode PNG/JPEG/WebP — re-encode anything else (GIF, BMP, SVG…) as PNG
+      if(!/^image\/(jpeg|png|webp)$/.test(mimeType)) mimeType = 'image/png';
       const quality = parseFloat(byId('quality').value);
-      const maxWidth = parseInt(byId('maxWidth').value) || null;
+      const maxWidth = parseInt(byId('maxWidth').value, 10) || null;
       const resizeMode = byId('resizeMode').value;
 
       // Compute target dimensions
-      let sw = item.img.width, sh = item.img.height;
+      const sw = item.width, sh = item.height;
       let dw = sw, dh = sh;
-      if(maxWidth && resizeMode !== 'noscale'){
-        if(sw > maxWidth){ const ratio = maxWidth / sw; dw = Math.round(sw * ratio); dh = Math.round(sh * ratio); }
+      if(maxWidth && maxWidth > 0 && resizeMode === 'fit'){
+        if(sw > maxWidth){ const ratio = maxWidth / sw; dw = Math.max(1, Math.round(sw * ratio)); dh = Math.max(1, Math.round(sh * ratio)); }
       }
 
-      // For cover mode, we will center-crop to exact width if maxWidth provided
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
 
-      if(resizeMode === 'cover' && maxWidth){
-        // Cover: make square-ish canvas of size maxWidth x (proportional)
-        const targetW = dw; const targetH = dh; canvas.width = targetW; canvas.height = targetH;
-        // draw image centered and cropped
-        const scale = Math.max(canvas.width / sw, canvas.height / sh);
-        const nx = (canvas.width - sw*scale)/2; const ny = (canvas.height - sh*scale)/2;
+      if(resizeMode === 'cover'){
+        // Cover: center-crop to a square (side = max width if given, otherwise the shorter edge)
+        const side = Math.max(1, Math.min(maxWidth || Math.min(sw, sh), Math.min(sw, sh)));
+        canvas.width = side; canvas.height = side;
+        const scale = Math.max(side / sw, side / sh);
+        const nx = (side - sw*scale)/2; const ny = (side - sh*scale)/2;
+        if(mimeType === 'image/jpeg'){ ctx.fillStyle = '#fff'; ctx.fillRect(0,0,side,side); }
+        ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(item.img, nx, ny, sw*scale, sh*scale);
       } else {
         canvas.width = dw; canvas.height = dh;
+        // JPEG has no alpha channel: flatten transparency onto white instead of black
+        if(mimeType === 'image/jpeg'){ ctx.fillStyle = '#fff'; ctx.fillRect(0,0,dw,dh); }
+        ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(item.img, 0, 0, dw, dh);
       }
 
-      // Convert canvas to blob
+      // Convert canvas to blob (PNG ignores the quality parameter; WebP and JPEG respect it)
       const blob = await new Promise((resolve) => {
-        // PNG ignores quality parameter; WebP and JPEG respect it
         if(mimeType === 'image/png') canvas.toBlob(resolve, 'image/png');
-        else canvas.toBlob(resolve, mimeType, mimeType==='image/png'?undefined:quality);
+        else canvas.toBlob(resolve, mimeType, quality);
       });
 
       if(!blob) throw new Error('Compression produced no output');
+      if(item.compressedUrl) URL.revokeObjectURL(item.compressedUrl);
       item.compressedBlob = blob; item.compressedSize = blob.size;
+      item.compressedUrl = URL.createObjectURL(blob);
+      item.outW = canvas.width; item.outH = canvas.height;
     }
 
     function escapeHtml(str){ return String(str).replace(/[&<>"']/g, (s)=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[s])); }
 
     function updateDownloadAllState(){ const ready = files.some(f=>f.compressedBlob); downloadAllBtn.disabled = !ready; }
 
-    // keyboard accessibility for dropzone (space/enter handled above). Also allow paste?
+    // paste images from the clipboard
     window.addEventListener('paste', (e)=>{
       const items = e.clipboardData && e.clipboardData.items;
       if(!items) return;
       const imgs = [];
-      for(const it of items){ if(it.type && it.type.startsWith('image/')) imgs.push(it.getAsFile()); }
+      for(const it of items){ if(it.type && it.type.startsWith('image/')){ const f = it.getAsFile(); if(f) imgs.push(f); } }
       if(imgs.length) handleFiles(imgs);
     });
 

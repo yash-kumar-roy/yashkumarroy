@@ -9,27 +9,39 @@
     --bg:linear-gradient(180deg,#fff7ed,#ffedd5);
     --panel:#ffffff; --accent:#ff5a5f; --accent2:#ffb703; --muted:#6b7280;
   }
-  html,body{height:100%;margin:0;font-family:Inter,system-ui,system-ui,-apple-system,Segoe UI,Roboto,Arial}
-  body{background:var(--bg);display:flex;align-items:center;justify-content:center}
+  *{box-sizing:border-box}
+  html{height:100%}
+  body{min-height:100%;margin:0;font-family:Inter,system-ui,system-ui,-apple-system,Segoe UI,Roboto,Arial}
+  body{background:var(--bg);display:flex;align-items:center;justify-content:center;overflow-x:hidden}
   .game-wrap{width:100%;max-width:980px;margin:24px;box-shadow:0 20px 50px rgba(2,6,23,0.12);border-radius:16px;overflow:hidden;background:linear-gradient(180deg,#fff,#fffbf7)}
-  header{padding:12px 16px;display:flex;align-items:center;gap:12px;background:linear-gradient(90deg,#ffecd2,#fcb69f);border-bottom:4px solid rgba(0,0,0,0.03)}
+  header{padding:12px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;background:linear-gradient(90deg,#ffecd2,#fcb69f);border-bottom:4px solid rgba(0,0,0,0.03)}
   h1{margin:0;font-size:20px;color:#3b2f2f}
-  .hud{margin-left:auto;display:flex;gap:12px;align-items:center}
+  .hud{margin-left:auto;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
   .score{font-weight:800;color:#0f1724;background:linear-gradient(90deg,#fff,#fff0);padding:6px 10px;border-radius:8px;box-shadow:0 6px 12px rgba(2,6,23,0.06)}
   .lives{display:flex;gap:6px;align-items:center}
-  .btn{background:#10b981;color:white;padding:8px 12px;border-radius:10px;border:none;cursor:pointer;font-weight:700}
+  .btn{background:#10b981;color:white;padding:8px 12px;border-radius:10px;border:none;cursor:pointer;font-weight:700;font-size:14px;white-space:nowrap}
   .btn.secondary{background:#7c3aed}
-  .canvas-wrap{position:relative;background:linear-gradient(180deg,#a8edea,#fed6e3);min-height:480px}
-  canvas{display:block;width:100%;height:100%}
+  .canvas-wrap{position:relative;background:linear-gradient(180deg,#a8edea,#fed6e3);height:480px;overflow:hidden}
+  canvas{position:absolute;inset:0;display:block;width:100%;height:100%;touch-action:none;outline:none;cursor:grab}
   /* overlays */
   .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
-  .panel{pointer-events:auto;background:rgba(255,255,255,0.95);backdrop-filter:blur(4px);padding:18px;border-radius:12px;text-align:center;box-shadow:0 10px 30px rgba(2,6,23,0.12)}
+  .panel{pointer-events:auto;max-width:520px;background:rgba(255,255,255,0.95);backdrop-filter:blur(4px);padding:18px;border-radius:12px;text-align:center;box-shadow:0 10px 30px rgba(2,6,23,0.12)}
   .panel h2{margin:0 0 8px 0}
   .controls{display:flex;gap:8px;justify-content:center;margin-top:10px}
   .small{font-size:13px;color:var(--muted)}
-  .footer{padding:10px 16px;display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:13px}
+  .footer{padding:10px 16px;display:flex;flex-wrap:wrap;gap:4px 12px;justify-content:space-between;align-items:center;color:var(--muted);font-size:13px}
 
-  @media (max-width:600px){ header h1{font-size:16px} .panel{width:90%} }
+  @media (max-width:600px){
+    .game-wrap{margin:8px;border-radius:12px}
+    header{padding:10px 12px;justify-content:center}
+    header h1{font-size:18px;width:100%;text-align:center}
+    .hud{margin-left:0;justify-content:center;gap:8px}
+    .btn{padding:7px 10px;font-size:13px}
+    .score{padding:5px 8px}
+    .canvas-wrap{height:min(480px, max(320px, calc(100vh - 190px)))}
+    .panel{width:90%}
+    .footer{justify-content:center;text-align:center;padding:8px 12px}
+  }
 </style>
 </head>
 <body>
@@ -45,11 +57,11 @@
     </header>
 
     <div class="canvas-wrap" id="stage">
-      <canvas id="gameCanvas"></canvas>
+      <canvas id="gameCanvas" tabindex="0" aria-label="Game area: use arrow keys, or drag to move the basket"></canvas>
       <div class="overlay" id="overlay">
         <div class="panel" id="startPanel">
           <h2>Catch the Fruits!</h2>
-          <div class="small">Move the basket with ← → arrows or drag with mouse/tap. Catch fruits to score. Miss 3 fruits and the game ends.</div>
+          <div class="small">Move the basket with ← → arrows (or A / D) or drag with mouse/tap. Catch fruits to score. Miss 3 fruits and the game ends.</div>
           <div class="controls"><button id="playNow" class="btn">Play Now</button><button id="howBtn" class="btn secondary">How to play</button></div>
         </div>
         <div class="panel" id="gameOverPanel" style="display:none">
@@ -104,6 +116,8 @@ function resize(){
   dpr = window.devicePixelRatio || 1; canvas.width = Math.floor(W*dpr); canvas.height = Math.floor(H*dpr); canvas.style.width = W+'px'; canvas.style.height = H+'px'; ctx = canvas.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
   player.y = H - 48; player.w = Math.max(90, Math.min(160, W*0.18));
   if(player.x===0) player.x = W/2 - player.w/2;
+  clampPlayer();
+  draw();
 }
 window.addEventListener('resize', resize);
 resize();
@@ -127,9 +141,10 @@ function spawnFruit(){
 
 function resetGame(){ fruits=[]; score=0; misses=0; spawnTimer=0; spawnInterval=800; updateHUD(); }
 
-function startGame(){ resetGame(); running=true; lastTime = performance.now(); startPanel.style.display='none'; gameOverPanel.style.display='none'; overlay.style.display='none'; animate(lastTime); }
+let loopId = 0;
+function startGame(){ resetGame(); running=true; lastTime = performance.now(); startPanel.style.display='none'; gameOverPanel.style.display='none'; overlay.style.display='none'; startBtn.textContent='Stop'; keys.left = keys.right = false; cancelAnimationFrame(loopId); canvas.focus({preventScroll:true}); loopId = requestAnimationFrame(animate); }
 
-function endGame(){ running=false; gameOverPanel.style.display='flex'; overlay.style.display='block'; finalScore.textContent = 'Score: ' + score; gameOverTitle.textContent = misses>=MAX_MISSES ? 'Game Over 🙁' : 'Stopped'; startPanel.style.display='none'; overlay.style.pointerEvents='auto'; }
+function endGame(){ running=false; cancelAnimationFrame(loopId); keys.left = keys.right = false; gameOverPanel.style.display='block'; overlay.style.display='flex'; finalScore.textContent = 'Score: ' + score; gameOverTitle.textContent = misses>=MAX_MISSES ? 'Game Over 🙁' : 'Stopped'; startPanel.style.display='none'; startBtn.textContent='Start'; }
 
 // update HUD
 function updateHUD(){ scoreEl.textContent = 'Score: ' + score; livesEl.innerHTML = ''; for(let i=0;i<MAX_MISSES;i++){ const heart = document.createElement('div'); heart.textContent = i< (MAX_MISSES - misses) ? '❤️':'🖤'; heart.style.fontSize='18px'; livesEl.appendChild(heart);} }
@@ -147,25 +162,28 @@ function catchCheck(f){
 }
 
 // input: keyboard
-const keys = {};
-window.addEventListener('keydown', (e)=>{ keys[e.key] = true; if(e.key==='ArrowLeft' || e.key==='ArrowRight') e.preventDefault(); });
-window.addEventListener('keyup', (e)=>{ keys[e.key] = false; });
+const keys = {left:false, right:false};
+const KEY_MAP = { ArrowLeft:'left', a:'left', A:'left', ArrowRight:'right', d:'right', D:'right' };
+window.addEventListener('keydown', (e)=>{ const k = KEY_MAP[e.key]; if(!k) return; keys[k] = true; if(running) e.preventDefault(); });
+window.addEventListener('keyup', (e)=>{ const k = KEY_MAP[e.key]; if(k) keys[k] = false; });
+window.addEventListener('blur', ()=>{ keys.left = keys.right = false; });
 
-// input: mouse / touch
-canvas.addEventListener('mousemove', (e)=>{ const rect = canvas.getBoundingClientRect(); const mx = e.clientX - rect.left; player.x = mx - player.w/2; clampPlayer(); });
-canvas.addEventListener('touchmove', (e)=>{ e.preventDefault(); const t = e.touches[0]; const rect = canvas.getBoundingClientRect(); const mx = t.clientX - rect.left; player.x = mx - player.w/2; clampPlayer(); }, {passive:false});
-canvas.addEventListener('mousedown', ()=>{ mouseDown = true; });
-canvas.addEventListener('mouseup', ()=>{ mouseDown = false; });
+// input: mouse / touch (pointer events cover both; touch-action:none stops the page scrolling while dragging)
+function moveTo(clientX){ const rect = canvas.getBoundingClientRect(); const mx = clientX - rect.left; player.x = mx - player.w/2; clampPlayer(); if(!running) draw(); }
+canvas.addEventListener('pointermove', (e)=>{ if(e.pointerType === 'mouse' || mouseDown) moveTo(e.clientX); });
+canvas.addEventListener('pointerdown', (e)=>{ mouseDown = true; canvas.focus({preventScroll:true}); try{ canvas.setPointerCapture(e.pointerId); }catch(_){} moveTo(e.clientX); });
+canvas.addEventListener('pointerup', ()=>{ mouseDown = false; });
+canvas.addEventListener('pointercancel', ()=>{ mouseDown = false; });
 
 function clampPlayer(){ player.x = Math.max(8, Math.min(W - player.w - 8, player.x)); }
 
 // main loop
-function animate(t){ if(!running) return; const dt = Math.min(40, t - lastTime); lastTime = t;
+function animate(t){ if(!running) return; const dt = Math.max(0, Math.min(40, t - lastTime)); lastTime = t;
   // spawn control
   spawnTimer += dt; if(spawnTimer > spawnInterval){ spawnTimer = 0; spawnInterval = Math.max(420, 800 - Math.floor(score*6)); spawnFruit(); }
   // update player via keys
-  if(keys['ArrowLeft']){ player.x -= player.speed * (dt/1000); }
-  if(keys['ArrowRight']){ player.x += player.speed * (dt/1000); }
+  if(keys.left){ player.x -= player.speed * (dt/1000); }
+  if(keys.right){ player.x += player.speed * (dt/1000); }
   clampPlayer();
   // update fruits
   for(let i=fruits.length-1;i>=0;i--){ const f = fruits[i]; f.y += f.vy * (dt/1000); // caught?
@@ -178,10 +196,11 @@ function animate(t){ if(!running) return; const dt = Math.min(40, t - lastTime);
   }
   // draw
   draw();
-  requestAnimationFrame(animate);
+  loopId = requestAnimationFrame(animate);
 }
 
 function draw(){ // clear
+  if(!ctx) return;
   ctx.clearRect(0,0,W,H);
   // background playful stripes
   const g = ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,'#a8edea'); g.addColorStop(1,'#fed6e3'); ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
@@ -214,13 +233,16 @@ if(!CanvasRenderingContext2D.prototype.roundRect){ CanvasRenderingContext2D.prot
 
 // controls
 startBtn.addEventListener('click', ()=>{ if(!running) startGame(); else endGame(); });
+// keep Space/Enter from re-triggering the header buttons while playing with the keyboard
+[startBtn, muteBtn].forEach(b => b.addEventListener('keydown', (e)=>{ if(running && (e.key===' ' || e.key==='Enter')) e.preventDefault(); }));
 playNow.addEventListener('click', ()=> startGame()); restartBtn.addEventListener('click', ()=> startGame()); howBtn.addEventListener('click', ()=> alert('Use ← and → arrow keys or drag with mouse / touch to move the basket. Catch fruits before they hit the floor. Missing 3 fruits ends the game.'));
 
 // ensure initial HUD
 updateHUD();
+draw();
 
-// keyboard focus for arrow keys
-window.addEventListener('load', ()=>{ window.focus(); });
+// keyboard focus for arrow keys (inside an iframe the canvas also takes focus when a game starts or it is clicked)
+window.addEventListener('load', ()=>{ try{ window.focus(); }catch(e){} resize(); });
 
 </script>
 </body>

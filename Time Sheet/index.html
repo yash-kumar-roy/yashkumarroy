@@ -220,12 +220,17 @@
             font-size: 1.5rem;
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .entries-section h2 #totalEntries {
+            margin-left: auto;
         }
 
         .entries-section h2::before {
             content: '📊';
-            margin-right: 10px;
+            margin-right: 0;
         }
 
         .entries-grid {
@@ -386,6 +391,64 @@
             z-index: 2;
         }
 
+        .btn-primary.is-success {
+            background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
+        }
+
+        .form-hint {
+            font-size: 0.85rem;
+            color: #777;
+            margin: -6px 0 16px;
+        }
+
+        .form-error {
+            background: #fff0f0;
+            border: 1px solid #ffc9c9;
+            color: #c0392b;
+            border-radius: 10px;
+            padding: 10px 14px;
+            margin: 0 0 16px;
+            font-size: 0.95rem;
+        }
+
+        .form-error[hidden] {
+            display: none;
+        }
+
+        .entry-employee {
+            overflow-wrap: anywhere;
+            min-width: 0;
+        }
+
+        .entry-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .entry-meta {
+            font-size: 0.9rem;
+            color: #666;
+            margin: 5px 0;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 4px 14px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .entry-meta .time-duration {
+            margin-top: 0;
+        }
+
+        .entry-task {
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
         @media (max-width: 768px) {
             .container {
                 margin: 10px;
@@ -416,6 +479,68 @@
             .form-row {
                 grid-template-columns: 1fr;
             }
+
+            .entry-header {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 8px;
+            }
+
+            .container {
+                margin: 0;
+            }
+
+            .header h1 {
+                font-size: 1.6rem;
+            }
+
+            .header p {
+                font-size: 0.95rem;
+            }
+
+            .main-content {
+                padding: 12px;
+            }
+
+            .form-section,
+            .entries-section {
+                padding: 16px;
+            }
+
+            .form-section h2,
+            .entries-section h2 {
+                font-size: 1.25rem;
+            }
+
+            .stats {
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+
+            .stat-card {
+                padding: 14px 8px;
+            }
+
+            .stat-card:last-child {
+                grid-column: 1 / -1;
+            }
+
+            .stat-number {
+                font-size: 1.6rem;
+            }
+
+            .btn-actions .btn {
+                flex: 1 1 100%;
+            }
+
+            .entry-card {
+                padding: 14px;
+            }
         }
     </style>
 </head>
@@ -433,7 +558,7 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="employeeName">Employee Name</label>
-                            <input type="text" id="employeeName" name="employeeName" required>
+                            <input type="text" id="employeeName" name="employeeName" maxlength="80" autocomplete="name" required>
                         </div>
                         <div class="form-group">
                             <label for="date">Date</label>
@@ -449,7 +574,13 @@
                             <label for="endTime">End Time</label>
                             <input type="time" id="endTime" name="endTime" required>
                         </div>
+                        <div class="form-group">
+                            <label for="breakMinutes">Break (minutes)</label>
+                            <input type="number" id="breakMinutes" name="breakMinutes" min="0" max="1440" step="1" value="0" inputmode="numeric">
+                        </div>
                     </div>
+                    <p class="form-hint">Shifts that end after midnight (e.g. 22:00 → 06:00) are counted as overnight. Break time is subtracted from the total.</p>
+                    <p class="form-error" id="formError" role="alert" hidden></p>
                     <div class="form-row">
                         <div class="form-group">
                             <label for="task">Task Description</label>
@@ -458,7 +589,7 @@
                     </div>
                     <div class="btn-actions">
                         <button type="submit" class="btn btn-primary">Add Entry</button>
-                        <button type="button" class="btn btn-success" onclick="downloadExcel()">Download Excel</button>
+                        <button type="button" class="btn btn-success" id="downloadBtn">Download Excel</button>
                     </div>
                 </form>
             </div>
@@ -471,7 +602,7 @@
                 
                 <div class="stats">
                     <div class="stat-card">
-                        <div class="stat-number" id="totalHours">0.0</div>
+                        <div class="stat-number" id="totalHours">0.00</div>
                         <div class="stat-label">Total Hours</div>
                     </div>
                     <div class="stat-card">
@@ -479,7 +610,7 @@
                         <div class="stat-label">Employees</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-number" id="avgHoursPerEmployee">0.0</div>
+                        <div class="stat-number" id="avgHoursPerEmployee">0.00</div>
                         <div class="stat-label">Avg Hours/Employee</div>
                     </div>
                 </div>
@@ -495,61 +626,157 @@
     </div>
 
     <script>
+        const STORAGE_KEY = 'timesheet_entries_v1';
         let entries = [];
         let entryIdCounter = 1;
 
-        // Set today's date as default
-        document.getElementById('date').valueAsDate = new Date();
+        const form = document.getElementById('timesheetForm');
+        const formError = document.getElementById('formError');
+        const dateInput = document.getElementById('date');
 
-        document.getElementById('timesheetForm').addEventListener('submit', function(e) {
+        // --- Helpers ---
+        function escapeHTML(value) {
+            return String(value).replace(/[&<>"']/g, ch => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[ch]));
+        }
+
+        // Local YYYY-MM-DD (valueAsDate / toISOString use UTC and can be off by a day)
+        function todayLocalISO() {
+            const d = new Date();
+            const pad = n => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        }
+
+        // Parse "YYYY-MM-DD" as a local date (new Date('YYYY-MM-DD') is UTC midnight)
+        function parseLocalDate(iso) {
+            const [y, m, d] = String(iso).split('-').map(Number);
+            return new Date(y, (m || 1) - 1, d || 1);
+        }
+
+        function formatDate(iso) {
+            const d = parseLocalDate(iso);
+            return isNaN(d) ? iso : d.toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+        }
+
+        function timeToMinutes(t) {
+            const m = /^(\d{1,2}):(\d{2})/.exec(t || '');
+            if (!m) return NaN;
+            const h = Number(m[1]), min = Number(m[2]);
+            if (h > 23 || min > 59) return NaN;
+            return h * 60 + min;
+        }
+
+        function formatHM(hours) {
+            const totalMin = Math.round(hours * 60);
+            const h = Math.floor(totalMin / 60), m = totalMin % 60;
+            return `${h}h ${String(m).padStart(2, '0')}m`;
+        }
+
+        /**
+         * Work out a shift. End earlier than start = overnight shift (ends next day).
+         * Returns { error } or { spanMinutes, workedMinutes, overnight }.
+         */
+        function calculateShift(startTime, endTime, breakMinutes) {
+            const start = timeToMinutes(startTime);
+            const end = timeToMinutes(endTime);
+            if (isNaN(start) || isNaN(end)) return { error: 'Please enter a valid start and end time.' };
+            if (start === end) return { error: 'Start and end time cannot be the same.' };
+            if (!Number.isFinite(breakMinutes) || breakMinutes < 0) return { error: 'Break must be zero or a positive number of minutes.' };
+            const overnight = end < start;
+            const spanMinutes = overnight ? end + 1440 - start : end - start;
+            if (breakMinutes >= spanMinutes) return { error: `Break (${breakMinutes} min) must be shorter than the shift (${spanMinutes} min).` };
+            return { spanMinutes, workedMinutes: spanMinutes - breakMinutes, overnight };
+        }
+
+        function showError(msg) {
+            formError.textContent = msg;
+            formError.hidden = !msg;
+        }
+
+        // --- Persistence (guarded: storage may be blocked in iframes / private mode) ---
+        function saveEntries() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+            } catch (e) { /* ignore — data stays in memory */ }
+        }
+
+        function loadEntries() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                const data = raw ? JSON.parse(raw) : [];
+                if (!Array.isArray(data)) return [];
+                return data.filter(e => e && typeof e.employeeName === 'string' && typeof e.duration === 'number' && isFinite(e.duration))
+                    .map(e => ({ ...e, breakMinutes: Number(e.breakMinutes) || 0, overnight: !!e.overnight, task: String(e.task || '') }));
+            } catch (e) {
+                return [];
+            }
+        }
+
+        // --- Form ---
+        dateInput.value = todayLocalISO();
+
+        form.addEventListener('input', () => showError(''));
+
+        form.addEventListener('submit', function(e) {
             e.preventDefault();
-            
+
             const formData = new FormData(this);
+            const employeeName = String(formData.get('employeeName') || '').trim();
+            const task = String(formData.get('task') || '').trim();
+            const date = formData.get('date');
             const startTime = formData.get('startTime');
             const endTime = formData.get('endTime');
-            
-            // Validate time window
-            if (startTime >= endTime) {
-                alert('End time must be after start time!');
+            const breakRaw = String(formData.get('breakMinutes') || '').trim();
+            const breakMinutes = breakRaw === '' ? 0 : Number(breakRaw);
+
+            if (!employeeName) { showError('Please enter the employee name.'); return; }
+            if (!task) { showError('Please describe the task you worked on.'); return; }
+            if (!date) { showError('Please choose a date.'); return; }
+
+            const shift = calculateShift(startTime, endTime, breakMinutes);
+            if (shift.error) {
+                showError(shift.error);
                 return;
             }
-            
-            // Calculate duration
-            const start = new Date(`2000-01-01 ${startTime}`);
-            const end = new Date(`2000-01-01 ${endTime}`);
-            const duration = (end - start) / (1000 * 60 * 60); // Convert to hours
-            
+            showError('');
+
             const entry = {
                 id: entryIdCounter++,
-                employeeName: formData.get('employeeName'),
-                date: formData.get('date'),
-                startTime: startTime,
-                endTime: endTime,
-                duration: duration,
-                task: formData.get('task'),
+                employeeName,
+                date,
+                startTime,
+                endTime,
+                breakMinutes,
+                overnight: shift.overnight,
+                duration: shift.workedMinutes / 60, // worked hours (break excluded)
+                task,
                 timestamp: new Date().toISOString()
             };
-            
+
             entries.push(entry);
+            saveEntries();
             renderEntries();
             updateStats();
             this.reset();
-            document.getElementById('date').valueAsDate = new Date();
-            
+            dateInput.value = date; // keep the chosen day for the next entry
+            document.getElementById('employeeName').value = employeeName;
+            document.getElementById('breakMinutes').value = 0;
+
             // Show success feedback
             const btn = document.querySelector('.btn-primary');
-            const originalText = btn.textContent;
             btn.textContent = '✓ Added!';
-            btn.style.background = 'linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%)';
-            setTimeout(() => {
-                btn.textContent = originalText;
-                btn.style.background = 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)';
+            btn.classList.add('is-success');
+            clearTimeout(btn._t);
+            btn._t = setTimeout(() => {
+                btn.textContent = 'Add Entry';
+                btn.classList.remove('is-success');
             }, 2000);
         });
 
         function renderEntries() {
             const container = document.getElementById('entriesContainer');
-            
+
             if (entries.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
@@ -559,35 +786,43 @@
                 `;
                 return;
             }
-            
+
             // Sort entries by date and start time (most recent first)
             const sortedEntries = [...entries].sort((a, b) => {
-                const dateCompare = new Date(b.date) - new Date(a.date);
+                const dateCompare = String(b.date).localeCompare(String(a.date));
                 if (dateCompare !== 0) return dateCompare;
-                return b.startTime.localeCompare(a.startTime);
+                return String(b.startTime).localeCompare(String(a.startTime));
             });
-            
+
             container.innerHTML = sortedEntries.map(entry => `
                 <div class="entry-card">
                     <div class="entry-header">
-                        <span class="entry-employee">${entry.employeeName}</span>
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <span class="entry-time">${entry.startTime} - ${entry.endTime}</span>
-                            <button class="delete-btn" onclick="deleteEntry(${entry.id})">Delete</button>
+                        <span class="entry-employee">${escapeHTML(entry.employeeName)}</span>
+                        <div class="entry-actions">
+                            <span class="entry-time">${escapeHTML(entry.startTime)} - ${escapeHTML(entry.endTime)}${entry.overnight ? ' (+1 day)' : ''}</span>
+                            <button type="button" class="delete-btn" data-id="${Number(entry.id)}" aria-label="Delete entry for ${escapeHTML(entry.employeeName)}">Delete</button>
                         </div>
                     </div>
-                    <div style="font-size: 0.9rem; color: #666; margin: 5px 0;">
-                        📅 ${new Date(entry.date).toLocaleDateString()} 
-                        <span class="time-duration">⏱️ ${entry.duration.toFixed(2)} hours</span>
+                    <div class="entry-meta">
+                        <span>📅 ${escapeHTML(formatDate(entry.date))}</span>
+                        <span class="time-duration">⏱️ ${entry.duration.toFixed(2)} hours (${formatHM(entry.duration)})</span>
+                        ${entry.breakMinutes ? `<span class="time-duration">☕ ${entry.breakMinutes} min break</span>` : ''}
+                        ${entry.overnight ? '<span class="time-duration">🌙 Overnight</span>' : ''}
                     </div>
-                    <div class="entry-task">${entry.task}</div>
+                    <div class="entry-task">${escapeHTML(entry.task)}</div>
                 </div>
             `).join('');
         }
 
+        document.getElementById('entriesContainer').addEventListener('click', (e) => {
+            const btn = e.target.closest('.delete-btn');
+            if (btn) deleteEntry(Number(btn.dataset.id));
+        });
+
         function deleteEntry(id) {
             if (confirm('Are you sure you want to delete this entry?')) {
                 entries = entries.filter(entry => entry.id !== id);
+                saveEntries();
                 renderEntries();
                 updateStats();
             }
@@ -595,13 +830,69 @@
 
         function updateStats() {
             const totalHours = entries.reduce((sum, entry) => sum + entry.duration, 0);
-            const uniqueEmployees = new Set(entries.map(entry => entry.employeeName)).size;
+            const uniqueEmployees = new Set(entries.map(entry => entry.employeeName.trim().toLowerCase())).size;
             const avgHours = uniqueEmployees > 0 ? totalHours / uniqueEmployees : 0;
-            
+
             document.getElementById('totalEntries').textContent = entries.length;
-            document.getElementById('totalHours').textContent = totalHours.toFixed(1);
+            document.getElementById('totalHours').textContent = totalHours.toFixed(2);
             document.getElementById('totalEmployees').textContent = uniqueEmployees;
-            document.getElementById('avgHoursPerEmployee').textContent = avgHours.toFixed(1);
+            document.getElementById('avgHoursPerEmployee').textContent = avgHours.toFixed(2);
+        }
+
+        function buildExportRows() {
+            const rows = entries.map(entry => ({
+                'Employee Name': entry.employeeName,
+                'Date': entry.date,
+                'Start Time': entry.startTime,
+                'End Time': entry.endTime + (entry.overnight ? ' (+1 day)' : ''),
+                'Break (Minutes)': entry.breakMinutes || 0,
+                'Duration (Hours)': Number(entry.duration.toFixed(2)),
+                'Task Description': entry.task,
+                'Entry Created': new Date(entry.timestamp).toLocaleString()
+            }));
+            // Sort by employee name, then by date and start time
+            rows.sort((a, b) => {
+                const nameCompare = a['Employee Name'].localeCompare(b['Employee Name']);
+                if (nameCompare !== 0) return nameCompare;
+                return (a.Date + a['Start Time']).localeCompare(b.Date + b['Start Time']);
+            });
+
+            const employeeStats = {};
+            entries.forEach(entry => {
+                const key = entry.employeeName.trim().toLowerCase();
+                if (!employeeStats[key]) employeeStats[key] = { name: entry.employeeName, hours: 0, entries: 0 };
+                employeeStats[key].hours += entry.duration;
+                employeeStats[key].entries += 1;
+            });
+            const summary = Object.values(employeeStats).map(s => ({
+                'Employee Name': s.name,
+                'Total Hours': Number(s.hours.toFixed(2)),
+                'Total Entries': s.entries,
+                'Average Hours per Entry': Number((s.hours / s.entries).toFixed(2))
+            }));
+            return { rows, summary };
+        }
+
+        function triggerDownload(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+
+        function downloadCSV(rows, filename) {
+            const headers = Object.keys(rows[0]);
+            const cell = v => {
+                let s = String(v ?? '');
+                if (/^[=+\-@]/.test(s)) s = "'" + s; // avoid spreadsheet formula injection
+                return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+            };
+            const csv = [headers.join(','), ...rows.map(r => headers.map(h => cell(r[h])).join(','))].join('\r\n');
+            triggerDownload(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }), filename);
         }
 
         function downloadExcel() {
@@ -609,90 +900,53 @@
                 alert('No entries to download! Please add some timesheet entries first.');
                 return;
             }
-            
-            // Prepare data for Excel
-            const excelData = entries.map(entry => ({
-                'Employee Name': entry.employeeName,
-                'Date': entry.date,
-                'Start Time': entry.startTime,
-                'End Time': entry.endTime,
-                'Duration (Hours)': entry.duration.toFixed(2),
-                'Task Description': entry.task,
-                'Entry Created': new Date(entry.timestamp).toLocaleString()
-            }));
-            
-            // Sort by employee name, then by date
-            excelData.sort((a, b) => {
-                const nameCompare = a['Employee Name'].localeCompare(b['Employee Name']);
-                if (nameCompare !== 0) return nameCompare;
-                return new Date(a.Date) - new Date(b.Date);
-            });
-            
-            // Create workbook and worksheet
-            const wb = XLSX.utils.book_new();
-            const ws = XLSX.utils.json_to_sheet(excelData);
-            
-            // Set column widths
-            const colWidths = [
-                { wch: 20 }, // Employee Name
-                { wch: 12 }, // Date
-                { wch: 12 }, // Start Time
-                { wch: 12 }, // End Time
-                { wch: 15 }, // Duration
-                { wch: 40 }, // Task Description
-                { wch: 20 }  // Entry Created
-            ];
-            ws['!cols'] = colWidths;
-            
-            // Add summary sheet
-            const summaryData = [];
-            const employeeStats = {};
-            
-            entries.forEach(entry => {
-                if (!employeeStats[entry.employeeName]) {
-                    employeeStats[entry.employeeName] = { hours: 0, entries: 0 };
-                }
-                employeeStats[entry.employeeName].hours += entry.duration;
-                employeeStats[entry.employeeName].entries += 1;
-            });
-            
-            Object.keys(employeeStats).forEach(name => {
-                summaryData.push({
-                    'Employee Name': name,
-                    'Total Hours': employeeStats[name].hours.toFixed(2),
-                    'Total Entries': employeeStats[name].entries,
-                    'Average Hours per Entry': (employeeStats[name].hours / employeeStats[name].entries).toFixed(2)
-                });
-            });
-            
-            const summaryWs = XLSX.utils.json_to_sheet(summaryData);
-            summaryWs['!cols'] = [
-                { wch: 20 }, // Employee Name
-                { wch: 15 }, // Total Hours
-                { wch: 15 }, // Total Entries
-                { wch: 20 }  // Average Hours per Entry
-            ];
-            
-            // Add worksheets to workbook
-            XLSX.utils.book_append_sheet(wb, ws, 'Timesheet Entries');
-            XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary');
-            
-            // Generate filename with current date
-            const filename = `Timesheet_${new Date().toISOString().split('T')[0]}.xlsx`;
-            
-            // Download the file
-            XLSX.writeFile(wb, filename);
-            
-            // Show success feedback
+
+            const { rows, summary } = buildExportRows();
+            const stamp = todayLocalISO();
             const btn = document.querySelector('.btn-success');
-            const originalText = btn.textContent;
-            btn.textContent = '✓ Downloaded!';
-            setTimeout(() => {
-                btn.textContent = originalText;
+
+            try {
+                if (typeof XLSX === 'undefined') throw new Error('XLSX library not loaded');
+
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.json_to_sheet(rows);
+                ws['!cols'] = [
+                    { wch: 20 }, // Employee Name
+                    { wch: 12 }, // Date
+                    { wch: 12 }, // Start Time
+                    { wch: 16 }, // End Time
+                    { wch: 15 }, // Break
+                    { wch: 16 }, // Duration
+                    { wch: 40 }, // Task Description
+                    { wch: 22 }  // Entry Created
+                ];
+
+                const summaryWs = XLSX.utils.json_to_sheet(summary);
+                summaryWs['!cols'] = [{ wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 24 }];
+
+                XLSX.utils.book_append_sheet(wb, ws, 'Timesheet Entries');
+                XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary');
+                XLSX.writeFile(wb, `Timesheet_${stamp}.xlsx`);
+                btn.textContent = '✓ Downloaded!';
+            } catch (err) {
+                // Fallback: plain CSV that Excel opens fine
+                console.warn('Excel export unavailable, falling back to CSV:', err);
+                downloadCSV(rows, `Timesheet_${stamp}.csv`);
+                btn.textContent = '✓ Downloaded CSV';
+            }
+
+            clearTimeout(btn._t);
+            btn._t = setTimeout(() => {
+                btn.textContent = 'Download Excel';
             }, 2000);
         }
 
-        // Initialize stats
+        document.getElementById('downloadBtn').addEventListener('click', downloadExcel);
+
+        // Initialize
+        entries = loadEntries();
+        entryIdCounter = entries.reduce((max, e) => Math.max(max, Number(e.id) || 0), 0) + 1;
+        renderEntries();
         updateStats();
     </script>
 </body>

@@ -2,8 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sudoku Game</title>
   <style>
+    * {
+      box-sizing: border-box;
+    }
     body {
       font-family: Arial, sans-serif;
       display: flex;
@@ -12,57 +16,98 @@
       background: linear-gradient(135deg, #e0f7fa, #fce4ec);
       margin: 0;
       padding: 20px;
+      min-height: 100vh;
+      overflow-x: hidden;
     }
     h1 {
-      margin-bottom: 10px;
+      margin: 0 0 10px;
       font-size: 32px;
       color: #333;
       text-shadow: 1px 1px 2px #aaa;
+      text-align: center;
     }
     .controls {
-      margin-bottom: 20px;
+      margin-bottom: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 4px 6px;
+      max-width: 100%;
+    }
+    .control-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
     }
     select, button {
-      margin: 5px;
+      margin: 5px 0;
       padding: 8px 12px;
       font-size: 14px;
       border-radius: 6px;
       border: 1px solid #888;
       cursor: pointer;
       transition: 0.3s;
+      background: #fff;
+      color: #222;
     }
     select:hover, button:hover {
       background: #ddd;
     }
+    #status {
+      min-height: 22px;
+      margin: 4px 0 0;
+      font-weight: bold;
+      text-align: center;
+      color: #333;
+    }
+    #status.ok { color: #2e7d32; }
+    #status.bad { color: #c62828; }
     #sudoku {
+      /* --n is set from JS (board size); cells shrink to fit narrow screens */
+      --n: 9;
+      --cell: min(45px, calc((100vw - 28px) / var(--n)));
       display: grid;
+      grid-template-columns: repeat(var(--n), var(--cell));
       gap: 0;
       background: #000;
-      margin: 20px 0;
+      margin: 14px 0 20px;
       transition: transform 0.3s ease-in-out;
     }
     .cell {
-      width: 45px;
-      height: 45px;
+      width: var(--cell);
+      height: var(--cell);
+      padding: 0;
+      margin: 0;
       text-align: center;
-      font-size: 18px;
+      font-size: calc(var(--cell) * 0.42);
       border: 1px solid #aaa;
+      border-radius: 0;
       background: #fff;
+      color: #1a237e;
       outline: none;
       transition: background 0.3s;
+      -webkit-appearance: none;
+      appearance: none;
     }
     .cell:hover {
       background: #f0f0f0;
     }
+    .cell:focus {
+      background: #fff9c4;
+    }
     .cell[disabled] {
       background: #ddd;
       font-weight: bold;
+      color: #000;
+      -webkit-text-fill-color: #000;
+      opacity: 1;
     }
     .bold-border {
       border-width: 2px;
       border-color: #000;
     }
-    .win {
+    .win .cell {
       animation: flash 1s ease-in-out 3;
     }
     @keyframes flash {
@@ -76,6 +121,7 @@
       height: 10px;
       background: red;
       top: -10px;
+      pointer-events: none;
       animation: fall 3s linear forwards;
     }
     @keyframes fall {
@@ -83,60 +129,94 @@
         transform: translateY(100vh) rotate(720deg);
       }
     }
+    @media (max-width: 480px) {
+      body {
+        padding: 12px 8px;
+      }
+      h1 {
+        font-size: 26px;
+      }
+      select, button {
+        padding: 7px 9px;
+        font-size: 13px;
+      }
+    }
   </style>
 </head>
 <body>
   <h1>Sudoku Game</h1>
   <div class="controls">
-    <label>Board Size:</label>
-    <select id="size">
-      <option value="4">4x4</option>
-      <option value="6">6x6</option>
-      <option value="9" selected>9x9</option>
-    </select>
-    <label>Difficulty:</label>
-    <select id="difficulty">
-      <option value="easy">Easy</option>
-      <option value="medium" selected>Medium</option>
-      <option value="hard">Hard</option>
-    </select>
+    <span class="control-group">
+      <label for="size">Board Size:</label>
+      <select id="size">
+        <option value="4">4x4</option>
+        <option value="6">6x6</option>
+        <option value="9" selected>9x9</option>
+      </select>
+    </span>
+    <span class="control-group">
+      <label for="difficulty">Difficulty:</label>
+      <select id="difficulty">
+        <option value="easy">Easy</option>
+        <option value="medium" selected>Medium</option>
+        <option value="hard">Hard</option>
+      </select>
+    </span>
     <button onclick="newGame()">New Game</button>
     <button onclick="checkSolution()">Check Solution</button>
   </div>
+  <div id="status" role="status" aria-live="polite"></div>
   <div id="sudoku"></div>
 
   <script>
     let solution = [];
     let size = 9;
 
+    // Sub-grid dimensions: 4x4 -> 2x2, 6x6 -> 2 rows x 3 cols, 9x9 -> 3x3
+    function boxDims(n) {
+      if (n === 6) return { rows: 2, cols: 3 };
+      const s = Math.sqrt(n);
+      return { rows: s, cols: s };
+    }
+
     function createEmptyBoard(n) {
       return Array.from({ length: n }, () => Array(n).fill(0));
     }
 
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
     function isValid(board, row, col, num) {
-      let n = board.length;
-      let boxSize = Math.sqrt(n);
+      const n = board.length;
+      const { rows, cols } = boxDims(n);
       for (let x = 0; x < n; x++) {
         if (board[row][x] === num || board[x][col] === num) return false;
       }
-      let startRow = row - row % boxSize, startCol = col - col % boxSize;
-      for (let i = 0; i < boxSize; i++) {
-        for (let j = 0; j < boxSize; j++) {
+      const startRow = row - row % rows, startCol = col - col % cols;
+      for (let i = 0; i < rows; i++) {
+        for (let j = 0; j < cols; j++) {
           if (board[i + startRow][j + startCol] === num) return false;
         }
       }
       return true;
     }
 
-    function solveBoard(board) {
-      let n = board.length;
+    // Fill an empty board with a random valid solution (randomised backtracking)
+    function fillBoard(board) {
+      const n = board.length;
       for (let row = 0; row < n; row++) {
         for (let col = 0; col < n; col++) {
           if (board[row][col] === 0) {
-            for (let num = 1; num <= n; num++) {
+            const nums = shuffle(Array.from({ length: n }, (_, k) => k + 1));
+            for (const num of nums) {
               if (isValid(board, row, col, num)) {
                 board[row][col] = num;
-                if (solveBoard(board)) return true;
+                if (fillBoard(board)) return true;
                 board[row][col] = 0;
               }
             }
@@ -147,43 +227,85 @@
       return true;
     }
 
+    // Count solutions (stops at `limit`) — used to keep the puzzle uniquely solvable
+    function countSolutions(board, limit) {
+      const n = board.length;
+      let best = -1, bestCount = n + 1;
+      for (let r = 0; r < n; r++) {
+        for (let c = 0; c < n; c++) {
+          if (board[r][c] !== 0) continue;
+          let cnt = 0;
+          for (let v = 1; v <= n; v++) if (isValid(board, r, c, v)) cnt++;
+          if (cnt === 0) return 0;
+          if (cnt < bestCount) { bestCount = cnt; best = r * n + c; }
+        }
+      }
+      if (best === -1) return 1; // board full
+      const r = Math.floor(best / n), c = best % n;
+      let total = 0;
+      for (let v = 1; v <= n && total < limit; v++) {
+        if (isValid(board, r, c, v)) {
+          board[r][c] = v;
+          total += countSolutions(board, limit - total);
+          board[r][c] = 0;
+        }
+      }
+      return total;
+    }
+
     function generateBoard(n, difficulty) {
-      let board = createEmptyBoard(n);
-      solveBoard(board); 
+      const board = createEmptyBoard(n);
+      fillBoard(board);
       solution = board.map(r => [...r]); // keep solved copy
 
       let removeCount;
-      if (difficulty === "easy") removeCount = n * n * 0.4;
-      else if (difficulty === "medium") removeCount = n * n * 0.55;
-      else removeCount = n * n * 0.7;
+      if (difficulty === "easy") removeCount = Math.round(n * n * 0.4);
+      else if (difficulty === "medium") removeCount = Math.round(n * n * 0.55);
+      else removeCount = Math.round(n * n * 0.7);
 
-      while (removeCount > 0) {
-        let i = Math.floor(Math.random() * n);
-        let j = Math.floor(Math.random() * n);
-        if (board[i][j] !== 0) {
-          board[i][j] = 0;
+      // Remove cells in random order, but only if the puzzle stays uniquely solvable
+      const cells = shuffle(Array.from({ length: n * n }, (_, k) => k));
+      for (const k of cells) {
+        if (removeCount <= 0) break;
+        const i = Math.floor(k / n), j = k % n;
+        const keep = board[i][j];
+        board[i][j] = 0;
+        if (countSolutions(board, 2) !== 1) {
+          board[i][j] = keep; // removing this cell would allow several solutions
+        } else {
           removeCount--;
         }
       }
       return board;
     }
 
+    function setStatus(text, cls) {
+      const el = document.getElementById("status");
+      el.textContent = text;
+      el.className = cls || "";
+    }
+
     function renderBoard(board) {
       const sudoku = document.getElementById("sudoku");
       sudoku.innerHTML = "";
-      sudoku.style.gridTemplateColumns = `repeat(${board.length}, 45px)`;
+      sudoku.classList.remove("win");
 
-      let n = board.length;
-      let boxSize = Math.sqrt(n);
+      const n = board.length;
+      const { rows, cols } = boxDims(n);
+      sudoku.style.setProperty("--n", n);
 
       for (let i = 0; i < n; i++) {
         for (let j = 0; j < n; j++) {
           const input = document.createElement("input");
           input.className = "cell";
+          input.type = "text";
+          input.inputMode = "numeric";
+          input.autocomplete = "off";
+          input.setAttribute("aria-label", `Row ${i + 1}, column ${j + 1}`);
 
           // bold borders for subgrids
-          if (i % boxSize === 0) input.style.borderTop = "3px solid black";
-          if (j % boxSize === 0) input.style.borderLeft = "3px solid black";
+          if (i % rows === 0) input.style.borderTop = "3px solid black";
+          if (j % cols === 0) input.style.borderLeft = "3px solid black";
           if (i === n - 1) input.style.borderBottom = "3px solid black";
           if (j === n - 1) input.style.borderRight = "3px solid black";
 
@@ -192,12 +314,25 @@
             input.disabled = true;
           } else {
             input.addEventListener("input", (e) => {
-              let val = parseInt(e.target.value);
-              if (isNaN(val) || val < 1 || val > n) {
-                e.target.value = "";
+              // keep a single valid digit (covers paste / on-screen keyboards)
+              const digits = e.target.value.replace(/[^0-9]/g, "").split("").reverse();
+              const pick = digits.find(d => +d >= 1 && +d <= n);
+              e.target.value = pick || "";
+              e.target.style.background = ""; // clear previous check colouring
+              setStatus("");
+            });
+            // physical keyboard: a digit always replaces the cell's value (wherever the caret is)
+            input.addEventListener("keydown", (e) => {
+              if (e.ctrlKey || e.metaKey || e.altKey || !/^[0-9]$/.test(e.key)) return;
+              e.preventDefault();
+              const d = +e.key;
+              if (d >= 1 && d <= n) {
+                input.value = String(d);
+                input.dispatchEvent(new Event("input"));
               }
             });
           }
+          input.addEventListener("keydown", (e) => moveFocus(e, i, j, n));
           input.dataset.row = i;
           input.dataset.col = j;
           sudoku.appendChild(input);
@@ -205,21 +340,39 @@
       }
     }
 
+    // Arrow-key navigation between cells
+    function moveFocus(e, i, j, n) {
+      const dirs = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] };
+      const d = dirs[e.key];
+      if (!d) return;
+      e.preventDefault();
+      let r = i, c = j;
+      for (let step = 0; step < n; step++) {
+        r = (r + d[0] + n) % n;
+        c = (c + d[1] + n) % n;
+        const next = document.querySelector(`.cell[data-row="${r}"][data-col="${c}"]`);
+        if (next && !next.disabled) { next.focus(); return; }
+      }
+    }
+
     function newGame() {
-      size = parseInt(document.getElementById("size").value);
-      let difficulty = document.getElementById("difficulty").value;
-      let board = generateBoard(size, difficulty);
+      size = parseInt(document.getElementById("size").value, 10);
+      const difficulty = document.getElementById("difficulty").value;
+      const board = generateBoard(size, difficulty);
       renderBoard(board);
+      setStatus("");
     }
 
     function checkSolution() {
-      let inputs = document.querySelectorAll(".cell");
+      const inputs = document.querySelectorAll(".cell");
       let correct = true;
+      let empty = 0;
       inputs.forEach(input => {
         if (!input.disabled) {
-          let row = input.dataset.row;
-          let col = input.dataset.col;
-          if (parseInt(input.value) !== solution[row][col]) {
+          const row = input.dataset.row;
+          const col = input.dataset.col;
+          if (input.value === "") empty++;
+          if (parseInt(input.value, 10) !== solution[row][col]) {
             correct = false;
             input.style.background = "#ffcdd2"; // red for wrong
           } else {
@@ -229,23 +382,31 @@
       });
 
       if (correct) {
+        setStatus("🎉 Solved! Well done!", "ok");
         winAnimation();
+      } else if (empty > 0) {
+        setStatus(`Not solved yet: ${empty} empty cell${empty === 1 ? "" : "s"}, wrong ones are red.`, "bad");
+      } else {
+        setStatus("Some cells are wrong (shown in red). Keep trying!", "bad");
       }
     }
 
     function winAnimation() {
-      document.getElementById("sudoku").classList.add("win");
+      const sudoku = document.getElementById("sudoku");
+      sudoku.classList.remove("win");
+      void sudoku.offsetWidth; // restart animation
+      sudoku.classList.add("win");
 
       // Confetti
       for (let i = 0; i < 100; i++) {
-        let confetti = document.createElement("div");
+        const confetti = document.createElement("div");
         confetti.className = "confetti";
-        confetti.style.left = Math.random() * window.innerWidth + "px";
+        confetti.style.left = Math.random() * (window.innerWidth - 10) + "px";
         confetti.style.background = `hsl(${Math.random() * 360},100%,50%)`;
         confetti.style.animationDuration = 2 + Math.random() * 3 + "s";
         document.body.appendChild(confetti);
 
-        setTimeout(() => confetti.remove(), 4000);
+        setTimeout(() => confetti.remove(), 5000);
       }
     }
 

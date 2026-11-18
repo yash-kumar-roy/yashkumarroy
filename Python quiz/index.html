@@ -101,11 +101,31 @@
             accent-color: #3776ab;
         }
 
-        .option label {
+        .option .option-text {
             cursor: pointer;
             font-size: 1rem;
             color: #555;
             flex: 1;
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+
+        .option:has(input:checked) {
+            border-color: #3776ab;
+            background: #e7f1fb;
+        }
+
+        .question-card.unanswered {
+            border-left-color: #dc3545;
+            box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.35);
+        }
+
+        .quiz-message {
+            display: none;
+            margin-top: 20px;
+            text-align: center;
+            color: #dc3545;
+            font-weight: 600;
         }
 
         .submit-btn {
@@ -234,6 +254,61 @@
                 font-size: 2.5rem;
             }
         }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 8px;
+            }
+
+            .container {
+                margin: 0;
+            }
+
+            .header h1 {
+                font-size: 1.6rem;
+            }
+
+            .header p {
+                font-size: 0.95rem;
+            }
+
+            .quiz-container {
+                padding: 14px;
+            }
+
+            .question-card {
+                padding: 18px 14px;
+                margin-bottom: 18px;
+            }
+
+            .question-text {
+                font-size: 1.05rem;
+            }
+
+            .option {
+                padding: 12px;
+            }
+
+            .option:hover {
+                transform: none;
+            }
+
+            .results {
+                padding: 20px 14px;
+            }
+
+            .detailed-results {
+                padding: 16px;
+            }
+
+            .result-item {
+                gap: 10px;
+            }
+
+            .result-item > div:last-child {
+                white-space: nowrap;
+            }
+        }
     </style>
 </head>
 <body>
@@ -306,8 +381,18 @@
             }
         ];
 
-        let currentQuiz = [];
         let userAnswers = [];
+
+        // Escape text before inserting it with innerHTML (options like "<class 'list'>"
+        // would otherwise be parsed as HTML tags and render blank).
+        function escapeHTML(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
 
         function loadQuiz() {
             const quizContainer = document.getElementById('quiz');
@@ -318,18 +403,27 @@
                 questionDiv.className = 'question-card';
                 questionDiv.innerHTML = `
                     <div class="question-number">Question ${index + 1} of ${quizData.length}</div>
-                    <div class="question-text">${q.question}</div>
+                    <div class="question-text">${escapeHTML(q.question)}</div>
                     <div class="options">
                         ${q.options.map((option, optionIndex) => `
-                            <div class="option">
+                            <label class="option" for="q${index}_${optionIndex}">
                                 <input type="radio" id="q${index}_${optionIndex}" name="question_${index}" value="${optionIndex}">
-                                <label for="q${index}_${optionIndex}">${option}</label>
-                            </div>
+                                <span class="option-text">${escapeHTML(option)}</span>
+                            </label>
                         `).join('')}
                     </div>
                 `;
+                questionDiv.addEventListener('change', () => {
+                    questionDiv.classList.remove('unanswered');
+                });
                 quizContainer.appendChild(questionDiv);
             });
+
+            const message = document.createElement('div');
+            message.id = 'quizMessage';
+            message.className = 'quiz-message';
+            message.setAttribute('role', 'alert');
+            quizContainer.appendChild(message);
 
             const submitButton = document.createElement('button');
             submitButton.className = 'submit-btn';
@@ -340,23 +434,33 @@
 
         function submitQuiz() {
             userAnswers = [];
-            let allAnswered = true;
+            const cards = document.querySelectorAll('#quiz .question-card');
+            const message = document.getElementById('quizMessage');
+            let firstUnanswered = null;
+            let unansweredCount = 0;
 
             quizData.forEach((q, index) => {
                 const selectedOption = document.querySelector(`input[name="question_${index}"]:checked`);
                 if (selectedOption) {
-                    userAnswers[index] = parseInt(selectedOption.value);
+                    userAnswers[index] = parseInt(selectedOption.value, 10);
+                    cards[index].classList.remove('unanswered');
                 } else {
-                    allAnswered = false;
+                    unansweredCount++;
+                    cards[index].classList.add('unanswered');
+                    if (!firstUnanswered) firstUnanswered = cards[index];
                 }
             });
 
-            if (!allAnswered) {
-                alert('Please answer all questions before submitting!');
+            if (firstUnanswered) {
+                message.textContent = `Please answer all questions before submitting! (${unansweredCount} left)`;
+                message.style.display = 'block';
+                firstUnanswered.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 return;
             }
+            message.style.display = 'none';
 
             showResults();
+            window.scrollTo(0, 0);
         }
 
         function showResults() {
@@ -400,7 +504,7 @@
                     ${quizData.map((q, index) => `
                         <div class="result-item">
                             <div>
-                                <strong>Q${index + 1}:</strong> ${q.question.substring(0, 50)}${q.question.length > 50 ? '...' : ''}
+                                <strong>Q${index + 1}:</strong> ${escapeHTML(q.question.length > 50 ? q.question.substring(0, 50) + '...' : q.question)}
                             </div>
                             <div class="${userAnswers[index] === q.correct ? 'correct' : 'incorrect'}">
                                 ${userAnswers[index] === q.correct ? '✓ Correct' : '✗ Wrong'}
@@ -408,8 +512,8 @@
                         </div>
                         ${userAnswers[index] !== q.correct ? `
                             <div style="margin-left: 20px; color: #6c757d; font-size: 0.9rem; margin-bottom: 10px;">
-                                Your answer: ${q.options[userAnswers[index]]}<br>
-                                Correct answer: ${q.options[q.correct]}
+                                Your answer: ${escapeHTML(q.options[userAnswers[index]])}<br>
+                                Correct answer: ${escapeHTML(q.options[q.correct])}
                             </div>
                         ` : ''}
                     `).join('')}
@@ -428,6 +532,10 @@
             document.querySelectorAll('input[type="radio"]').forEach(input => {
                 input.checked = false;
             });
+            document.querySelectorAll('#quiz .question-card').forEach(card => card.classList.remove('unanswered'));
+            const message = document.getElementById('quizMessage');
+            if (message) message.style.display = 'none';
+            window.scrollTo(0, 0);
         }
 
         // Initialize the quiz when page loads

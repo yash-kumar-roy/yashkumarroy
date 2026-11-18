@@ -144,15 +144,19 @@
             border-bottom: 1px solid #e0e0e0;
         }
 
-        .inventory-table th {
+        .inventory-table thead tr {
             background: linear-gradient(135deg, #667eea, #764ba2);
+        }
+
+        .inventory-table th {
+            background: transparent;
             color: white;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
-        .inventory-table tr:hover {
+        .inventory-table tbody tr:hover {
             background: #f8f9fa;
             cursor: pointer;
             transition: background 0.2s ease;
@@ -189,14 +193,81 @@
             color: #155724;
         }
 
+        .status-section.status-pending {
+            background: linear-gradient(135deg, #e7ebff, #dfe3fb);
+            border-left-color: #667eea;
+            color: #3b4796;
+        }
+
+        .status-section.status-error {
+            background: linear-gradient(135deg, #f8d7da, #f1b0b7);
+            border-left-color: #dc3545;
+            color: #721c24;
+        }
+
+        .result-info {
+            color: #444;
+        }
+
+        #searchBtn:disabled {
+            opacity: 0.7;
+            cursor: wait;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .inventory-table td:last-child,
+        .inventory-table th:last-child {
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .inventory-table tbody tr:focus-visible {
+            outline: 2px solid #667eea;
+            outline-offset: -2px;
+        }
+
+        .inventory-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .result-text {
+            overflow-wrap: anywhere;
+        }
+
         @media (max-width: 768px) {
+            body {
+                padding: 12px;
+            }
+
             .container {
                 padding: 20px;
-                margin: 10px;
             }
-            
+
             h1 {
                 font-size: 2em;
+                margin-bottom: 20px;
+            }
+        }
+
+        @media (max-width: 420px) {
+            .container {
+                padding: 16px;
+                border-radius: 16px;
+            }
+
+            h1 {
+                font-size: 1.6em;
+            }
+
+            .result-text {
+                font-size: 16px;
+            }
+
+            .inventory-table th,
+            .inventory-table td {
+                padding: 12px 10px;
+                font-size: 14px;
             }
         }
     </style>
@@ -204,6 +275,8 @@
 <body>
     <div class="container">
         <h1>🔍 Inventory Search</h1>
+
+        <div class="status-section status-pending" id="connectionStatus" role="status">🔌 Connecting to database...</div>
         
 
 
@@ -213,10 +286,11 @@
                     type="text" 
                     id="searchInput" 
                     placeholder="Enter product name to search inventory..."
-                    onkeypress="handleKeyPress(event)"
+                    aria-label="Product name"
+                    autocomplete="off"
                 />
             </div>
-            <button id="searchBtn" onclick="searchInventory()">Search Inventory</button>
+            <button id="searchBtn" type="button">Search Inventory</button>
         </div>
 
         <div class="loading" id="loading">
@@ -240,35 +314,45 @@
         </table>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.0/axios.min.js"></script>
-    
     <script>
+        // Each row: { name: original product name, key: lowercase name, inventory }
         let inventoryData = [];
-        const API_BASE_URL = 'http://localhost:5000'; // Change this to your server URL
+        // Same-origin API when served by the portfolio (or Flask) server; local Flask backend when opened as a file.
+        const API_BASE_URL = window.location.protocol === 'file:' ? 'http://localhost:5000' : '';
+        let searchSeq = 0;
 
-        // Load inventory data from MySQL via API
-        async function loadInventoryFromDatabase() {
+        function setStatus(message, state) {
             const statusDiv = document.getElementById('connectionStatus');
-            
+            if (!statusDiv) return;
+            statusDiv.textContent = message;
+            statusDiv.classList.toggle('status-error', state === 'error');
+            statusDiv.classList.toggle('status-pending', state === 'pending');
+        }
+
+        // Load inventory data via API
+        async function loadInventoryFromDatabase() {
+            setStatus('🔌 Connecting to database...', 'pending');
             try {
-                statusDiv.textContent = '🔌 Connecting to database...';
-                
                 const response = await fetch(`${API_BASE_URL}/api/inventory`);
-                
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                
                 const data = await response.json();
-                inventoryData = data.map(item => [item.product_name.toLowerCase(), item.inventory]);
-                
-                statusDiv.innerHTML = '✅ Connected to database successfully!';
+                if (!Array.isArray(data)) throw new Error('Unexpected response');
+                inventoryData = data
+                    .filter(item => item && item.product_name != null)
+                    .map(item => ({
+                        name: String(item.product_name),
+                        key: String(item.product_name).toLowerCase(),
+                        inventory: item.inventory
+                    }));
+
+                setStatus(`✅ Connected to database — ${inventoryData.length} products loaded`, 'ok');
                 displayInventoryTable();
-                showResult('Ready to search inventory!', 'success');
-                
+                showResult('Ready to search inventory! Type a name or click a row below.', 'info');
             } catch (error) {
                 console.error('Database connection error:', error);
-                statusDiv.innerHTML = '❌ Unable to connect to database. Please try again later.';
+                setStatus('❌ Unable to connect to database. Please try again later.', 'error');
                 showResult('❌ Database connection failed. Please contact support.', 'error');
             }
         }
@@ -276,9 +360,8 @@
         function displayInventoryTable() {
             const tbody = document.getElementById('inventoryBody');
             const table = document.getElementById('inventoryTable');
-            
             tbody.innerHTML = '';
-            
+
             if (inventoryData.length === 0) {
                 table.style.display = 'none';
                 return;
@@ -286,78 +369,96 @@
 
             inventoryData.forEach(row => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td style="text-transform: capitalize;">${row[0]}</td>
-                    <td>${row[1]}</td>
-                `;
-                tr.onclick = () => {
-                    document.getElementById('searchInput').value = row[0];
+                tr.tabIndex = 0;
+                tr.title = `Search for ${row.name}`;
+                const nameTd = document.createElement('td');
+                nameTd.textContent = row.name;
+                const qtyTd = document.createElement('td');
+                qtyTd.textContent = row.inventory;
+                tr.append(nameTd, qtyTd);
+                const pick = () => {
+                    document.getElementById('searchInput').value = row.name;
                     searchInventory();
                 };
+                tr.addEventListener('click', pick);
+                tr.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); }
+                });
                 tbody.appendChild(tr);
             });
-            
+
             table.style.display = 'table';
         }
 
-        function handleKeyPress(event) {
+        function handleKeyDown(event) {
             if (event.key === 'Enter') {
+                event.preventDefault();
                 searchInventory();
             }
         }
 
         async function searchInventory() {
-            const searchTerm = document.getElementById('searchInput').value.trim().toLowerCase();
+            const rawTerm = document.getElementById('searchInput').value.trim();
+            const searchTerm = rawTerm.toLowerCase();
             const loading = document.getElementById('loading');
             const resultContainer = document.getElementById('resultContainer');
+            const btn = document.getElementById('searchBtn');
 
             if (!searchTerm) {
                 showResult('❌ Please enter a product name to search', 'error');
                 return;
             }
 
-            // Show loading animation
+            const seq = ++searchSeq;
             loading.style.display = 'block';
             resultContainer.style.display = 'none';
+            btn.disabled = true;
 
+            let message, type;
             try {
-                // Search directly in the API
                 const response = await fetch(`${API_BASE_URL}/api/search`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ product_name: searchTerm })
                 });
-
-                const result = await response.json();
-                
-                loading.style.display = 'none';
-                resultContainer.style.display = 'flex';
-
-                if (result.found) {
-                    showResult(`✅ Inventory for '${searchTerm}': ${result.inventory}`, 'success');
-                } else {
-                    showResult('❌ Product not found. Please try another.', 'error');
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok && !('found' in result)) {
+                    throw new Error(result.error || `HTTP error! status: ${response.status}`);
                 }
-
+                if (result.found) {
+                    const local = inventoryData.find(r => r.key === searchTerm);
+                    const name = (local && local.name) || result.product_name || rawTerm;
+                    message = `✅ Inventory for '${name}': ${result.inventory}`;
+                    type = 'success';
+                } else {
+                    message = `❌ '${rawTerm}' not found. Please try another product.`;
+                    type = 'error';
+                }
             } catch (error) {
-                loading.style.display = 'none';
-                resultContainer.style.display = 'flex';
-                showResult('❌ Search failed. Please check your connection.', 'error');
+                console.error('Search error:', error);
+                message = '❌ Search failed. Please check your connection.';
+                type = 'error';
             }
+
+            if (seq !== searchSeq) return; // a newer search superseded this one
+            loading.style.display = 'none';
+            resultContainer.style.display = 'flex';
+            btn.disabled = false;
+            showResult(message, type);
         }
 
         function showResult(message, type) {
             const resultContainer = document.getElementById('resultContainer');
-            const resultText = resultContainer.querySelector('.result-text') || 
-                              resultContainer.appendChild(document.createElement('div'));
-            
+            let resultText = resultContainer.querySelector('.result-text');
+            if (!resultText) {
+                resultText = document.createElement('div');
+                resultContainer.appendChild(resultText);
+            }
             resultText.className = 'result-text';
             resultText.textContent = message;
-            
+
             resultContainer.className = `result-container result-${type}`;
-            
+
             // Add animation effect
             resultContainer.style.transform = 'scale(0.95)';
             setTimeout(() => {
@@ -365,10 +466,11 @@
             }, 100);
         }
 
+        document.getElementById('searchInput').addEventListener('keydown', handleKeyDown);
+        document.getElementById('searchBtn').addEventListener('click', searchInventory);
+
         // Initialize the app
-        window.onload = function() {
-            loadInventoryFromDatabase();
-        };
+        loadInventoryFromDatabase();
     </script>
 </body>
 </html>
