@@ -10,7 +10,7 @@ const router = Router();
 const ALLOWED = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/avif', 'application/pdf'];
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+  limits: { fileSize: 4 * 1024 * 1024, files: 1 },
   fileFilter: (_req, file, cb) => {
     if (ALLOWED.includes(file.mimetype)) return cb(null, true);
     const err = new Error('Upload a PNG, JPG, WebP, GIF, AVIF image or a PDF.');
@@ -21,7 +21,7 @@ const upload = multer({
 
 function handleUpload(req, res, next) {
   upload.single('file')(req, res, (err) => {
-    if (err?.code === 'LIMIT_FILE_SIZE') return res.status(400).json({ success: false, message: 'Files must be 5 MB or smaller.' });
+    if (err?.code === 'LIMIT_FILE_SIZE') return res.status(400).json({ success: false, message: 'Files must be 4 MB or smaller.' });
     if (err) return res.status(err.status || 400).json({ success: false, message: err.message });
     return next();
   });

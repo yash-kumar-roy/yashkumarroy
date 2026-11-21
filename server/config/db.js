@@ -99,6 +99,28 @@ export async function connectDB() {
   }
 }
 
+/**
+ * Connect once and share the result. Safe to call on every request: serverless instances (Vercel)
+ * connect on their first request and reuse the connection while warm. After a failed attempt it
+ * waits 30 s before retrying, so a database outage doesn't add a timeout to every request.
+ */
+let pending = null;
+let lastFailure = 0;
+export function ensureConnected() {
+  if (isConnected && mongoose.connection.readyState === 1) return Promise.resolve(true);
+  if (!process.env.MONGODB_URI?.trim()) return Promise.resolve(false);
+  if (pending) return pending;
+  if (Date.now() - lastFailure < 30_000) return Promise.resolve(false);
+  // A dropped connection is reconnected by mongoose itself; don't open a second one.
+  if (hasConnectedOnce && mongoose.connection.readyState !== 0) return Promise.resolve(false);
+  pending = connectDB().then((ok) => {
+    if (!ok) lastFailure = Date.now();
+    pending = null;
+    return ok;
+  });
+  return pending;
+}
+
 mongoose.connection.on('disconnected', () => {
   isConnected = false;
   if (hasConnectedOnce) console.log('[MongoDB] ⚠️  Disconnected from MongoDB.');

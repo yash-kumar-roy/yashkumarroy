@@ -1,0 +1,2 @@
+# The API runs on Render (see vercel.json rewrites), so don't deploy api/ as a Vercel function.
+/api

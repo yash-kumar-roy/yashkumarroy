@@ -138,7 +138,7 @@ export function GalleryField({ value = [], onChange }) {
   return (
     <div className="a-field">
       <span className="a-label">Images</span>
-      <p className="a-hint">The first image is the cover shown on the home page. Up to 5 MB each.</p>
+      <p className="a-hint">The first image is the cover shown on the home page. Up to 4 MB each.</p>
       {value.length > 0 && (
         <ul className="a-gallery">
           {value.map((src, i) => (

@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 
 // Uploaded images / PDFs stored directly in MongoDB so they survive redeploys
-// on hosts with ephemeral disks (Render, Railway, etc.). Max 5 MB each.
+// on hosts with ephemeral disks (Render, Railway, etc.). Max 4 MB each (Vercel rejects request bodies over 4.5 MB).
 const mediaSchema = new mongoose.Schema(
   {
     filename: { type: String, default: '' },

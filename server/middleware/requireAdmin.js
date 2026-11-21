@@ -2,9 +2,15 @@ import crypto from 'node:crypto';
 
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours
 
-// Secret used to sign admin session tokens. Set ADMIN_SECRET to keep sessions valid across restarts;
-// otherwise a random one is generated at startup (everyone is simply logged out on restart).
-const sessionSecret = process.env.ADMIN_SECRET?.trim() || crypto.randomBytes(32).toString('hex');
+// Secret used to sign admin session tokens. It must be the same on every server instance
+// (serverless hosts like Vercel run many), so it's ADMIN_SECRET if set, otherwise derived from
+// ADMIN_PASSWORD. Changing either one logs every session out.
+function getSessionSecret() {
+  const explicit = process.env.ADMIN_SECRET?.trim();
+  if (explicit) return explicit;
+  const password = process.env.ADMIN_PASSWORD?.trim() || process.env.ADMIN_TOKEN?.trim() || '';
+  return crypto.createHash('sha256').update(`ykr-admin-session:${password}`).digest('hex');
+}
 
 function safeEqual(a, b) {
   const x = Buffer.from(String(a));
@@ -13,7 +19,7 @@ function safeEqual(a, b) {
 }
 
 function sign(payload) {
-  return crypto.createHmac('sha256', sessionSecret).update(payload).digest('base64url');
+  return crypto.createHmac('sha256', getSessionSecret()).update(payload).digest('base64url');
 }
 
 export function adminConfigured() {
